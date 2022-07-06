@@ -1,0 +1,7 @@
+*.stats
+__pycache__/
+dk.class.violet.html first_post_nicekovsky.html index.html post_daro.html
+index_files/
+venv/
+link_do_tematu_testowego.txt
+TODO.md
