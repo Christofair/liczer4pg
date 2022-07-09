@@ -1,11 +1,13 @@
 import logging
 import unittest
+import lxml
 
-import app
+import models
 
 logger = logging.getLogger(__name__)
 
-class SomeTest(unittest.TestCase):
+
+class TestModels(unittest.TestCase):
     loaded_document = None
 
     @classmethod
@@ -29,7 +31,7 @@ class SomeTest(unittest.TestCase):
 
     def test_getting_all_typers(self):
         """Check about users who betting in that topic"""
-        self.typers = [app.Typer(app.get_owner(post), post) for post in self.posts]
+        self.typers = [models.Typer(app.get_owner(post), post) for post in app.posts]
         self.assertEquals(self.typers, ['Nicekovsky', 'Bazukaczekczek', 'Daro', 'Unsub', 'IdoB'])
         pass
 
