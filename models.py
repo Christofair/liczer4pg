@@ -1,7 +1,7 @@
 import re
 from datetime import date, datetime
 from lxml import html
-import functools as ft
+
 
 class Event:
     def __init__(self):
@@ -50,8 +50,8 @@ class Event:
         start_of_braces = line.index('(')
         processed_line = line[:start_of_braces]
         home, away = processed_line.split('-')
-        home_re = re.search(r"(.+).+(\d).*", processed_line)
-        away_re = re.search(r".*(\d).+(.+)", processed_line)
+        home_re = re.search(r"\b(.+)\b.+(\d+).*", home)
+        away_re = re.search(r"(\d+).+\b(.+)\b", away)
         home_name = home_re.group(1)
         home_score = home_re.group(2)
         away_name = away_re.group(2)
@@ -93,13 +93,19 @@ class Event:
         obj.start_time = start_time
         return obj
 
+    def __eq__(self, other):
+        home_cond = self.home_team == other.home_team
+        away_cond = self.away_team == other.away_team
+        time_cond = self.start_time == other.start_time
+        return home_cond and away_cond and time_cond
+
 
 class Bet:
     def __init__(self):
         self.events = []
 
     # in that method get single post as in article tag
-    @clsmethod
+    @classmethod
     def parse(cls, post) -> "Bet":
         if isinstance(post, str):
             post_root = html.fragment_fromstring(post)
@@ -108,9 +114,14 @@ class Bet:
         comment_content = post_root.cssselect('.cPost_contentWrap')[0]
         lines = comment_content.text_content().splitlines()
         pattern = r'.+.*\d.*-.*\d.*\(typujemy.*'
-        lines = filter(ft.partial(re.search, pattern), lines)
+        c = re.compile(pattern)
+        lines = filter(c.search, lines)
         lines = [l.replace('\xa0',' ') for l in lines]
-        events = [Event.parse(line) for line in lines]
+        try:
+            events = [Event.parse(line) for line in lines]
+        except ValueError as e:
+            print(e)
+            return None
         obj = cls()
         obj.events = events
         return obj
@@ -118,8 +129,18 @@ class Bet:
 class Typer:
     def __init__(self, name, post):
         self.name = name
-        self.post = self._parse_post_if_string(post)
+        if post is not None:
+            self.post = self._parse_post_if_string(post)
         self.bet = None
+
+    def __eq__(self, other):
+        return self.name == other.name
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def __repr__(self):
+        return f"Typer(name={self.name})"
 
     @staticmethod
     def _parse_post_if_string(post):
@@ -145,6 +166,6 @@ class Typer:
     def get_owner(post):
         p = Typer._parse_post_if_string(post)
         name = p.xpath('aside/h3/strong/a/span')[0].text_content()
-        name = name.lstrip('\xa0')
+        name = name.lstrip('\xa0').lower()
         return name
 
