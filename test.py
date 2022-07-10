@@ -3,7 +3,7 @@ import unittest
 import lxml
 
 import models
-import app
+import utils
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class TestApp(unittest.TestCase):
         [x.close() for x in files]
 
     def test_collecting_posts(self):
-        posts = app.collect_posts_from_topic(self.doc)
+        posts = utils.collect_posts_from_topic(self.doc)
         pass_counter = 0
         for post in posts:
             for rp in self.real_posts:
@@ -34,7 +34,7 @@ class TestApp(unittest.TestCase):
         self.assertEqual(pass_counter, len(self.real_posts))
 
     def test_getting_pattern_events(self):
-        events = app.get_pattern_events(self.real_posts)
+        events = utils.get_pattern_events(self.real_posts)
         teams = [
             ['Sevilla', 'Granada'],
             ['Cádiz','Real Betis Balompié'],
@@ -73,7 +73,7 @@ class TestModels(unittest.TestCase):
         except Exception as e:
             logger.error("Exception %s occured" % (e,))
             raise e from None
-        cls.posts = app.collect_posts_from_topic(cls.document.read())
+        cls.posts = utils.collect_posts_from_topic(cls.document.read())
 
     @classmethod
     def tearDownClass(cls):
