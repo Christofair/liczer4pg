@@ -36,7 +36,7 @@ class TestApp(unittest.TestCase):
     def test_getting_pattern_events(self):
         events = app.get_pattern_events(self.real_posts)
         teams = [
-            ['Sevilla','Granada'],
+            ['Sevilla', 'Granada'],
             ['Cádiz','Real Betis Balompié'],
             ["RCD Mallorca",  "Atlético Madrid"],
             ["Villarreal",  "Athletic Club"],
@@ -44,7 +44,7 @@ class TestApp(unittest.TestCase):
             ["Osasuna",  "Deportivo Alavés"],
             ["Espanyol",  "Celta Vigo"],
             ["Elche CF",  "Real Sociedad"],
-            ["Levante",  "Barcelona "],
+            ["Levante",  "Barcelona"],
             ["Rayo Vallecano", "Valencia"]
         ]
         for idx, event in enumerate(events):
@@ -104,13 +104,14 @@ class TestModels(unittest.TestCase):
             _create_event("Levante", "Barcelona", "0-2"),
             _create_event("Rayo Vallecano", "Valencia", "0-2")
         ]
+        print(nicekovsky_bet_test_data)
         nicekovsky_bet = models.Bet.parse(post)
+        print(nicekovsky_bet)
         for event_test_data in nicekovsky_bet_test_data.events:
             event = nicekovsky_bet.events.pop(0)
-            c1 = event_test_data.home_team == event.home_team
-            c2 = event_test_data.away_team == event.away_team
-            c3 = event_test_data.bet_result == event.bet_result
-            self.assertTrue(c1 and c2 and c3)
+            self.assertEqual(event_test_data.home_team, event.home_team)
+            self.assertEqual(event_test_data.away_team, event.away_team)
+            self.assertEqual(event_test_data.bet_result, event.bet_result)
 
         post = [p for p in self.posts if models.Typer.get_owner(p) == "idob"][0]
         idob_bet_test_data = models.Bet()
@@ -129,10 +130,9 @@ class TestModels(unittest.TestCase):
         idob_bet = models.Bet.parse(post)
         for event_test_data in idob_bet_test_data.events:
             event = idob_bet.events.pop(0)
-            c1 = event_test_data.home_team == event.home_team
-            c2 = event_test_data.away_team == event.away_team
-            c3 = event_test_data.bet_result == event.bet_result
-            self.assertTrue(c1 and c2 and c3)
+            self.assertEqual(event_test_data.home_team, event.home_team)
+            self.assertEqual(event_test_data.away_team, event.away_team)
+            self.assertEqual(event_test_data.bet_result, event.bet_result)
 
     def test_timestamp_of_post(self):
         """Check date of written post"""

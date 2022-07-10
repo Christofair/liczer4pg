@@ -6,11 +6,34 @@ from lxml import html
 class Event:
     def __init__(self):
         # pattern to result is "X-Y"
-        self.ended_result = ""
         self.home_team = ""
         self.away_team = ""
-        self.start_time = 0 
-        self.bet_result = ""
+        self.start_time: datetime = 0
+        # result divided on two properties
+        self.result = ""
+    
+    def __repr__(self):
+        stra = []
+        if self.start_time:
+            stra.append(f"event start at {self.start_time.strftime()}")
+        stra.append(f"{self.home_team}\t{self.result}\t{self.away_team}")
+        return ''.join(stra)
+
+    @property
+    def bet_result(self):
+        return self.result
+
+    @bet_result.setter
+    def bet_result(self, value):
+        self.result = value
+
+    @property
+    def ended_result(self):
+        return self.result
+
+    @ended_result.setter
+    def ended_result(self, value):
+        self.result = value
 
     def count_point(self):
         if self._is_perfect_score():
@@ -49,13 +72,10 @@ class Event:
         """Load event from line"""
         start_of_braces = line.index('(')
         processed_line = line[:start_of_braces]
-        home, away = processed_line.split('-')
-        home_re = re.search(r"\b(.+)\b.+(\d+).*", home)
-        away_re = re.search(r"(\d+).+\b(.+)\b", away)
-        home_name = home_re.group(1)
-        home_score = home_re.group(2)
-        away_name = away_re.group(2)
-        away_score = away_re.group(1)
+        splitted_line = re.split(r'(\d+).*-.*(\d+)', processed_line, maxsplit=1)
+        home_name, home_score, away_score, away_name = splitted_line
+        home_name = home_name.replace('\xa0',' ').strip()
+        away_name = away_name.replace('\xa0',' ').strip()
         if away_score is None or home_score is None:
             if away_score is not None or home_score is not None:
                 raise ValueError("[PARSER] Line no contain valid result")
@@ -64,7 +84,7 @@ class Event:
         obj = cls()
         obj.home_team = home_name
         obj.away_team = away_name
-        obj.ended_result = '-'.join([home_score, away_score])
+        obj.bet_result =  '-'.join([home_score, away_score])
         obj.start_time = 0
         return obj
 
@@ -76,20 +96,24 @@ class Event:
         thetime_line = line[start_of_braces:]
         if not year:
             year = date.today().year
-        tsr = re.search(r"\(typujemy do (\d+).(\d+) do godziny (\d+):(\d+)\)",
-                        thetime_line)
+        tsr = re.search(r"\(.*typujemy +do +(\d+).(\d+) +do +godziny +(\d+):(\d+).*\)",
+                        thetime_line.replace('\xa0',' '))
         try:
-            start_time = date(year, int(tsr.group(2)), int(tsr.group(1)), int(tsr.group(3)),
+            start_time = datetime(year, int(tsr.group(2)), int(tsr.group(1)), int(tsr.group(3)),
                             int(tsr.group(4)))
         except Exception as e:
             print("Error during getting time")
+            print(f'parsing line with time was: {thetime_line!r}')
             print(e)
             raise e from None
         home, away = processed_line.split('-')
+        home = home.replace('\xa0',' ').strip()
+        away = away.replace('\xa0',' ').strip()
         obj = cls()
         obj.home_team = home
         obj.away_team = away
         obj.ended_result = ""
+        obj.bet_result = ""
         obj.start_time = start_time
         return obj
 
@@ -103,6 +127,13 @@ class Event:
 class Bet:
     def __init__(self):
         self.events = []
+
+    def __repr__(self):
+        string_array = ["-----BET------\n"]
+        for event in self.events:
+            string_array.extend([str(event), "\n"])
+        string_array.append("--------------")
+        return ''.join(string_array)
 
     # in that method get single post as in article tag
     @classmethod
@@ -140,7 +171,7 @@ class Typer:
         return hash(self.name)
 
     def __repr__(self):
-        return f"Typer(name={self.name})"
+        return f"Typer(name={self.name})\nbet={self.bet}"
 
     @staticmethod
     def _parse_post_if_string(post):
