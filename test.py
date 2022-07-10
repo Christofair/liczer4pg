@@ -1,6 +1,8 @@
 import logging
 import unittest
 import lxml
+from time import sleep
+import requests
 
 import models
 import utils
@@ -34,7 +36,7 @@ class TestApp(unittest.TestCase):
         self.assertEqual(pass_counter, len(self.real_posts))
 
     def test_getting_pattern_events(self):
-        events = utils.get_pattern_events(self.real_posts)
+        events = models.Event.get_pattern_events(self.real_posts)
         teams = [
             ['Sevilla', 'Granada'],
             ['Cádiz','Real Betis Balompié'],
@@ -104,9 +106,7 @@ class TestModels(unittest.TestCase):
             _create_event("Levante", "Barcelona", "0-2"),
             _create_event("Rayo Vallecano", "Valencia", "0-2")
         ]
-        print(nicekovsky_bet_test_data)
         nicekovsky_bet = models.Bet.parse(post)
-        print(nicekovsky_bet)
         for event_test_data in nicekovsky_bet_test_data.events:
             event = nicekovsky_bet.events.pop(0)
             self.assertEqual(event_test_data.home_team, event.home_team)
@@ -138,12 +138,48 @@ class TestModels(unittest.TestCase):
         """Check date of written post"""
         pass
 
-    def test_finding_pattern_to_follow(self):
-        """Check pattern in which there are names of teams and timestamps to start match"""
-        # For this should be a function with passing a post content to it.
-        pass
+    def test_name_from_link_in_topic(self):
+        t = models.Topic(
+            'https://pogrywamy.pl/topic/16702-typowanie-02-k-league-1-22062022/#comment-86170'
+        )
+        self.assertEqual(t.name, "16702-typowanie-02-k-league-1-22062022")
 
-    def test_getting_single_event(self):
-        """Check if single event from post have properly set date,
-        and result if there was a result."""
-        pass
+
+class TestFeature(unittest.TestCase):
+
+    def setUp(self):
+        # waiting before each test, cause there can be treated as dos attack.
+        sleep(0.4)
+
+    def test_counting_points(self):
+        """Check well count points for typers"""
+        topic_response = requests.get(
+            'https://pogrywamy.pl/topic/16702-typowanie-02-k-league-1-22062022/#comment-86170'
+        )
+        self.assertFalse(topic_response.status_code != 200)
+        # build doc tree through html parser
+        # topic = Topic(topic_response.url)
+        posts = utils.collect_posts_from_topic(topic_response.content.decode('utf-8'))
+        typers = []
+        for post in posts:
+            typer = models.Typer(models.Typer.get_owner(post), post)
+            typer.load_bet()
+            typers.append(typer)
+        events_to_compare = models.Event.get_pattern_events(posts)
+        for event in events_to_compare:
+            if event.home_team == 'Suwon FC':
+                event.ended_result = "3-0"
+            elif event.home_team == 'Jeonbuk Hyundai Motors':
+                event.ended_result = "1-1"
+            elif event.home_team == 'FC Seoul':
+                event.ended_result = "1-1"
+            elif event.home_team == 'Ulsan Hyundai':
+                event.ended_result = "0-0"
+            elif event.home_team == 'Pohang Steelers':
+                event.ended_result = "1-1"
+            elif event.home_team == 'Gangwon FC':
+                event.ended_result = "4-2"
+        print(typers)
+        for typer in typers:
+            print(f'typer {typer.name} got {typer.bet.count_point(events_to_compare)} points')
+
