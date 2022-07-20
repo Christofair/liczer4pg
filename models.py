@@ -3,6 +3,7 @@
 import re
 from datetime import date, datetime
 from lxml import html
+from lxml.etree import tostring as et2str
 import utils
 
 # imports for do database
@@ -28,7 +29,7 @@ class Event(Base):
     result_required = sa.CheckConstraint(
         '(winner is NULL and home_score is not NULL and away_score is not NULL)'
         ' or (winner is not NULL and home_score is NULL and away_score is NULL)')
-    hit = sa.Column(sa.Boolean, default=False, nullable=False)
+    points = sa.Column(sa.Integer, default=0, nullable=False)
 
     def set_score(self, value):
         """Setting score for event. If there is winner type of bet, then
@@ -76,18 +77,20 @@ class Event(Base):
         if self != result_event:
             raise ValueError("These events are different.")
         if self._is_perfect_score(result_event):
-            return 3
+            self.points = 3
         elif self._is_there_two_points(result_event):
-            return 2
+            self.points = 2
         else:
-            return 0
+            self.points = 0
+        return self.points
 
     def count_point_winner(self, result_event):
         # check if winner is play in this event at all
         if self.winner in self.home_team or self.winner in self.away_team:
-            return 2 if self.winner == result_event.winner else 0
+            self.points = 2 if self.winner == result_event.winner else 0
         else:
             raise ValueError("That player or team was not play in this event")
+        return self.points
 
     def _is_perfect_score(self, result_event):
         try:
@@ -296,7 +299,6 @@ class Bet(Base):
             events = [Event.parse(line, year=post_year) for line in lines]
         except ValueError as e:
             logger.error(e)
-            return None
         obj = cls()
         obj.events = events
         return obj
@@ -319,16 +321,28 @@ class Bet(Base):
                         for event in self.events])
         raise ValueError("good event list was empty")
 
+
+# Class for collect posts of typers, but I dont want to collect them at first
+# class Post(Base):
+#     __tablename__ = 'posts'
+#     id = sa.Column(sa.Integer, primary_key=True)
+#     typer_id = sa.Column(sa.Integer, sa.ForeignKey('typers.id')) 
+#     typer = orm.relationship('Typer', back_populates='posts')
+#     post = sa.Column(sa.BLOB)
+
+
 class Typer(Base):
     __tablename__ = 'typers'
     id = sa.Column(sa.Integer, sa.Sequence('typer_id_seq'), primary_key=True)
     name = sa.Column(sa.String(255), index=True, unique=True)
     bets = orm.relationship('Bet', back_populates='typer')
+    # posts = orm.relationship('Post', back_populates='typer')
 
     def __init__(self, name, post):
         self.name = name
         if post is not None:
-            self.post = self._parse_post_if_string(post)
+            self._post = self._parse_post_if_string(post)
+            # self.posts.append(et2str(self._parse_post_if_string(post)))
         self.bet = None
 
     def __eq__(self, other):
@@ -338,7 +352,18 @@ class Typer(Base):
         return hash(self.name)
 
     def __repr__(self):
-        return f"\n---Typer:{self.name}---\n{self.bet}--------"
+        return f"Typer({self.name})"
+
+    @property
+    def post(self):
+        return self._post
+        # else:
+        #     self._post = self._parse_post_if_string(self.wpis)
+
+    @post.setter
+    def post(self, value):
+        self._post = self._parse_post_if_string(value)
+        # self.posts.append(Post(typer_id=self.id, post=et2str(self._post)))
 
     @staticmethod
     def _parse_post_if_string(post):
@@ -352,6 +377,13 @@ class Typer(Base):
 
     def load_bet(self):
         self.bet = Bet.parse(self.post)
+
+    def add_bet(self, bet=None):
+        if bet is not None:
+            self.bets.append(bet)
+        elif self.bet is not None:
+            self.bets.append(self.bet)
+            self.bet = bet
 
     def when_written(self):
         return utils.get_post_timestamp(self.post)

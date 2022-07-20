@@ -186,7 +186,6 @@ class TestFeature(unittest.TestCase):
                 event.ended_result = "1-1"
             elif event.home_team == 'Gangwon FC':
                 event.ended_result = "4-2"
-        print(typers)
         # for typer in typers:
         #     print(f'typer {typer.name} got {typer.bet.count_point(events_to_compare)} points')
         correct_results = [2,0,0]
@@ -212,7 +211,6 @@ class TestFeature(unittest.TestCase):
                 event.result = "3-0"
             elif event.home_team == 'Polska':
                 event.result = "3-1"
-        print(events_to_compare)
         correct_results = [8, 8, 8, 9, 10]
         for i in range(len(typers)):
             self.assertEqual(typers[i].bet.count_point(events_to_compare), correct_results[i])
@@ -258,19 +256,33 @@ class TestDB(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        # if os.path.exists('./test.db'):
-        #     os.system('del ./test.db')
+        if os.path.exists('./TestDB.db'):
+            os.remove('./TestDB.db')
         pass
 
-    def test_saving_parsed_post_to_blob(self):
+    def test_saving_typers_with_bets(self):
         """lxml.html.Element object save to database."""
         with open('./index.html', encoding='utf-8') as topic:
             posts = utils.collect_posts_from_topic(topic.read())
-        self.assertTrue(posts)
+        self.assertTrue(len(posts) > 0)
         typers = []
         for post in posts:
             typers.append(models.Typer(models.Typer.get_owner(post), post))
+            typers[-1].load_bet()
+            typers[-1].add_bet()
+
+        import pdb
+        pdb.set_trace()
 
         with sa.orm.Session(self.engine) as session:
             session.add_all(typers)
+            session.commit()
             session.flush()
+
+        typers = []
+
+        with sa.orm.Session(self.engine) as session:
+            typers = session.query(models.Typer, models.Bet).join(models.Bet).all()
+            print(typers)
+            self.assertEqual(['nicekovsky', 'daro', 'bazukaczeczek', 'idob', 'unsub'],
+                             [typer[0].name for typer in typers])
