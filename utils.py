@@ -3,8 +3,8 @@ import re
 from datetime import datetime
 
 
-def collect_posts_from_topic(topic_html_doc: str):
-    """Return all post from topic.
+def collect_posts_from_topic(topic_html_doc: str) -> list[html.Element]:
+    """Return all post from topic as html.Element.
     This is entry point of creating posts from string to html.Elements.
     Remove last post if it contains a results.
     """
@@ -14,6 +14,7 @@ def collect_posts_from_topic(topic_html_doc: str):
         print(e)
     posts: list[html.Element] = doc.xpath('//article')
     for post in posts:
+        # TODO: Add condition to searching "punktacja" string.
         imgs = post.cssselect('.ipsColumn_fluid')[0].xpath('*//img')
         if any([re.search('.*wyniki.*png', img.get('alt')) for img in imgs]):
             posts.remove(post)

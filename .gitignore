@@ -6,3 +6,7 @@ venv/
 link_do_tematu_testowego.txt
 TODO.md
 test_posts/
+.mylogin.cnf
+Pipfile
+Pipfile.lock
+TestDB.db

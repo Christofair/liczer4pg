@@ -1,45 +1,79 @@
+"""Models are classes on which we operate in python code, and store persistent state in db"""
+
 import re
 from datetime import date, datetime
 from lxml import html
 import utils
 
+# imports for do database
+import sqlalchemy as sa
+import sqlalchemy.orm as orm
+import logging
 
-class Event:
-    def __init__(self):
-        # pattern to result is "X-Y"
-        self.home_team = ""
-        self.away_team = ""
-        self.start_time: datetime = 0
-        # result divided on two properties
-        self.result = ""
+logger = logging.getLogger(__name__)
 
-    @property
-    def bet_result(self):
-        return self.result
+Base = orm.declarative_base()
 
-    @bet_result.setter
-    def bet_result(self, value):
-        self.result = value
+class Event(Base):
+    __tablename__ = 'events'
+    id = sa.Column(sa.Integer, sa.Sequence('event_id_seq'), primary_key=True)
+    bet_id = sa.Column(sa.Integer, sa.ForeignKey('bets.id'))
+    bet = orm.relationship('Bet', back_populates='events')
+    start_time = sa.Column(sa.DateTime, nullable=False, default='19700101')
+    home_team = sa.Column(sa.String(255), nullable=False)
+    away_team = sa.Column(sa.String(255), nullable=False)
+    home_score = sa.Column(sa.Integer, default=None, nullable=True)
+    away_score = sa.Column(sa.Integer, default=None, nullable=True)
+    winner = sa.Column(sa.String(255), default=None, nullable=True)
+    result_required = sa.CheckConstraint(
+        '(winner is NULL and home_score is not NULL and away_score is not NULL)'
+        ' or (winner is not NULL and home_score is NULL and away_score is NULL)')
+    hit = sa.Column(sa.Boolean, default=False, nullable=False)
 
-    @property
-    def ended_result(self):
-        return self.result
+    def set_score(self, value):
+        """Setting score for event. If there is winner type of bet, then
+        value 1 for home_team or away_team specifies that winner."""
+        if not value:
+            self.home_score = 0
+            self.away_score = 0
+            self.winner = None
+        elif '-' in value:
+            self.home_score = value.split('-')[0]
+            self.away_score = value.split('-')[1]
+            if self.home_score > self.away_score:
+                self.winner = self.home_team
+            elif self.home_score < self.away_score:
+                self.winner = self.away_team
+            else:
+                self.winner = None
+        else:
+            if value == self.home_team:
+                self.home_score = None
+                self.away_score = None
+                self.winner = value
+            elif value == self.away_team:
+                self.home_score = None
+                self.away_score = None
+                self.winner = value
+            else:
+                ValueError("Passed value has wrong style")
 
-    @ended_result.setter
-    def ended_result(self, value):
-        self.result = value
+    def get_score(self):
+        return "{}-{}".format(self.home_score, self.away_score)
+
+    result = property(get_score, set_score)
+    bet_result = property(get_score, set_score)
+    ended_result = property(get_score, set_score)
 
     def __repr__(self):
         stra = []
         if self.start_time:
-            stra.append(f"Start at {self.start_time.ctime()}\n")
+            stra.append(f"\nStart at {self.start_time.ctime()}\n")
         stra.append(f"{self.home_team}\t{self.result}\t{self.away_team}")
         return ''.join(stra)
 
-    def count_point(self, result_event):
+    def count_point_scores(self, result_event):
         if self != result_event:
-            print(self)
-            print(result_event)
             raise ValueError("These events are different.")
         if self._is_perfect_score(result_event):
             return 3
@@ -48,13 +82,20 @@ class Event:
         else:
             return 0
 
+    def count_point_winner(self, result_event):
+        # check if winner is play in this event at all
+        if self.winner in self.home_team or self.winner in self.away_team:
+            return 2 if self.winner == result_event.winner else 0
+        else:
+            raise ValueError("That player or team was not play in this event")
+
     def _is_perfect_score(self, result_event):
         try:
             # parsing to int by map
             bet_result_home, bet_result_away = list(map(int, self.bet_result.split('-')))
             ended_result_home, ended_result_away = list(map(int, result_event.ended_result.split('-')))
         except ValueError:
-            print("Parsing scores failed in Event")
+            logger.error("Parsing scores failed in Event")
             return False
         else:
             return bet_result_home == ended_result_home and bet_result_away == ended_result_away
@@ -71,15 +112,48 @@ class Event:
                 or score_home < score_away and bet_score_home < bet_score_away)
 
     @classmethod
+    def _parse_winner_type(cls, line, year=None):
+        start_time = datetime(1970,1,1)
+        sb = len(line)
+        try:
+            sb = line.index('(')
+            thetime_line = line[sb:]
+            if not year:
+                year = date.today().year
+            tsr = re.search(r"\(.*typujemy +do +(\d+).(\d+)(\.\d{2,4})? +do +godziny +(\d+):(\d+).*\)",
+                            thetime_line.replace('\xa0',' '))
+            try:
+                start_time = datetime(year, int(tsr.group(2)), int(tsr.group(1)),
+                                      int(tsr.group(4)), int(tsr.group(5)))
+            except Exception as e:
+                logger.exception("Error during getting time")
+                raise e
+        except ValueError:
+            try: sb = line.index('\xa0')
+            except: pass
+        processed_line = line[:sb]
+        obj = cls()
+        obj.winner = processed_line
+        obj.start_time = start_time
+        obj.result = ""
+        return obj
+
+
+    @classmethod
     def parse(cls, line, year=None):
         """Load event from line"""
+        pattern = r'(\d+).*-.*(\d+)'
+        # XXX Separate from parse - new parsae for winner type
+        # if not re.search(pattern, line):
+        #     return cls._parse_winner_type(line, year)
         start_of_braces = line.index('(')
         processed_line = line[:start_of_braces]
-        splitted_line = re.split(r'(\d+).*-.*(\d+)', processed_line, maxsplit=1)
+        splitted_line = re.split(pattern, processed_line, maxsplit=1)
         home_name, home_score, away_score, away_name = splitted_line
         home_name = home_name.replace('\xa0',' ').strip()
         away_name = away_name.replace('\xa0',' ').strip()
         thetime_line = line[start_of_braces:]
+        start_time = datetime(1970,1,1)
         if not year:
             year = date.today().year
         tsr = re.search(r"\(.*typujemy +do +(\d+).(\d+) +do +godziny +(\d+):(\d+).*\)",
@@ -88,9 +162,8 @@ class Event:
             start_time = datetime(year, int(tsr.group(2)), int(tsr.group(1)), int(tsr.group(3)),
                             int(tsr.group(4)))
         except Exception as e:
-            print("Error during getting time")
-            print(f'parsing line with time was: {thetime_line!r}')
-            print(e)
+            logger.exception("Error during getting time")
+            logger.info(f'parsing line with time was: {thetime_line!r}')
             raise e from None
         if away_score is None or home_score is None:
             if away_score is not None or home_score is not None:
@@ -100,8 +173,9 @@ class Event:
         obj = cls()
         obj.home_team = home_name
         obj.away_team = away_name
+        # TODO get rid bet_result
         obj.bet_result =  '-'.join([home_score, away_score])
-        obj.start_time = 0
+        obj.start_time = start_time
         return obj
 
     @classmethod
@@ -114,22 +188,18 @@ class Event:
             year = date.today().year
         tsr = re.search(r"\(.*typujemy +do +(\d+).(\d+) +do +godziny +(\d+):(\d+).*\)",
                         thetime_line.replace('\xa0',' '))
-        try:
+        if tsr:
             start_time = datetime(year, int(tsr.group(2)), int(tsr.group(1)), int(tsr.group(3)),
-                            int(tsr.group(4)))
-        except Exception as e:
-            print("Error during getting time")
-            print(f'parsing line with time was: {thetime_line!r}')
-            print(e)
-            raise e from None
+                                int(tsr.group(4)))
+        else:
+            raise ValueError("Pattern event doesn't have time line")
         home, away = processed_line.split('-')
         home = home.replace('\xa0',' ').strip()
         away = away.replace('\xa0',' ').strip()
         obj = cls()
         obj.home_team = home
         obj.away_team = away
-        obj.ended_result = ""
-        obj.bet_result = ""
+        obj.result = ""
         obj.start_time = start_time
         return obj
 
@@ -139,30 +209,42 @@ class Event:
         pattern_events = []
         for post in posts:
             post_year = utils.get_post_timestamp(post).year
+            c = re.compile(r'^[Ww]z[oó]r[:]$')
             lines = list(
                 filter(None, post.cssselect('.cPost_contentWrap')[0].text_content().splitlines()))
-            c = re.compile(r'[Ww]z[oó]r\b')
             flist = [c.search(l) for l in lines if c.search(l) is not None]
             if flist:
                 for i in range(lines.index(flist[0].string), len(lines)):
                     try:
                         pattern_events.append(Event.parse_pattern_event(lines[i],
                                                                             year=post_year))
+                    except ValueError as e:
+                        # only logging, that there was an exception 
+                        # Never silently pass an exception.
+                        logger.info(e)
+                        pass  # value error can be passed away.
                     except Exception as e:
-                        print(e)
-                    if lines[i] == '\xa0' or "Moje Typy:" in lines[i]:
+                        logger.exception(e)
+                    if re.search(r"[Mm]oje [tT]ypy:", lines[i]) or lines[i] == '\xa0':
                         break
-                break
+                break  # only one post has `c` pattern in it.
         return pattern_events
+
 
     def __eq__(self, other):
         home_cond = self.home_team == other.home_team
         away_cond = self.away_team == other.away_team
-        time_cond = self.start_time == other.start_time
-        return home_cond and away_cond and time_cond
+        # time_cond = self.start_time == other.start_time
+        return home_cond and away_cond
 
 
-class Bet:
+class Bet(Base):
+    __tablename__ = 'bets'
+    id = sa.Column(sa.Integer, sa.Sequence('bet_id_seq'), primary_key=True)
+    events = orm.relationship('Event', back_populates='bet')
+    typer_id = sa.Column(sa.Integer, sa.ForeignKey('typers.id'))
+    typer = orm.relationship('Typer', back_populates='bets')
+
     def __init__(self):
         self.events = []
 
@@ -172,6 +254,26 @@ class Bet:
             string_array.extend([str(event), "\n"])
         string_array.append("--------------")
         return ''.join(string_array)
+
+    @classmethod
+    def _parse_in_winner_type(cls, post) -> "Bet":
+        if isinstance(post, str):
+            post_root = html.fragment_fromstring(post)
+        else:
+            post_root = post
+        post_year = utils.get_post_timestamp(post).year
+        comment_content = post_root.cssselect('.cPost_contentWrap')[0]
+        lines = comment_content.text_content().splitlines()
+        lines = [l.replace('\xa0',' ') for l in filter(None, lines)]
+        try:
+            events = [Event.parse(line, year=post_year) for line in lines]
+        except ValueError as e:
+            logger.error(e)
+            return None
+        obj = cls()
+        obj.events = events
+        return obj
+
 
     # in that method get single post as in article tag
     @classmethod
@@ -187,26 +289,42 @@ class Bet:
         c = re.compile(pattern)
         lines = filter(c.search, lines)
         lines = [l.replace('\xa0',' ') for l in lines]
+        # XXX This have to be separated.
+        # if not lines:
+        #     return cls._parse_in_winner_type(post)
         try:
             events = [Event.parse(line, year=post_year) for line in lines]
         except ValueError as e:
-            print(e)
+            logger.error(e)
             return None
         obj = cls()
         obj.events = events
         return obj
 
-    def count_point(self, good_events_list):
+    def count_point(self, good_events_list, kind='scores'):
         """Count point for event if events are equal and the result is correct in some way"""
         # [0] is for get rid nested array, but there is only single element always.
         # There is only single element, because of checking equality of events.
         # checking equality has to be in first list comprehension, because undefined of variable
-        return sum([[event.count_point(good_event)
-                     for good_event in good_events_list 
-                        if event.home_team == good_event.home_team][0]
-                     for event in self.events])
+        if kind == 'scores':
+            counting_function = lambda x, y: x.count_point_scores(y)
+        elif kind == 'winner':
+            counting_function = lambda x, y: x.count_point_winner(y)
+        else:
+            ValueError("Function to counting points is not known")
+        if good_events_list:
+            return sum([[counting_function(event, good_event)
+                        for good_event in good_events_list
+                            if event.home_team == good_event.home_team][0]
+                        for event in self.events])
+        raise ValueError("good event list was empty")
 
-class Typer:
+class Typer(Base):
+    __tablename__ = 'typers'
+    id = sa.Column(sa.Integer, sa.Sequence('typer_id_seq'), primary_key=True)
+    name = sa.Column(sa.String(255), index=True, unique=True)
+    bets = orm.relationship('Bet', back_populates='typer')
+
     def __init__(self, name, post):
         self.name = name
         if post is not None:
@@ -246,7 +364,14 @@ class Typer:
         return name
 
 
-class Topic:
+class Topic(Base):
+    """Represent topic, which can be opened/closed"""
+    __tablename__ = 'topics'
+    link = sa.Column(sa.String(255), unique=True, primary_key=True)
+    name = sa.Column(sa.String(255), nullable=True)
+    is_open = sa.Column(sa.Boolean, default=True)
+    ending_events_datetime = sa.Column(sa.DateTime)
+
     def __init__(self, link, name=""):
         self.is_open = True
         self.link = link
@@ -262,3 +387,20 @@ class Topic:
     def close(self):
         self.is_open = False
 
+    @staticmethod
+    def _repr_event_to_pattern(event):
+        if event.start_time == datetime(1970,1,1):
+            raise ValueError("Invalid event date in construction of pattern to topic")
+        event_pattern = ("{} - {} (typujemy do {} )"
+                         .format(event.home_team, event.away_team,
+                                 event.start_time.strftime("%d.%m do godziny %H:%M")))
+
+    def generate_topic_part(self, events: list[Event]):
+        events_in_string = []
+        events_failed = []
+        for event in events:
+            try:
+                events_in_string.append(self._repr_event_to_pattern(event))
+            except ValueError:
+                events_failed.append(event)
+        return '\n'.join(events_in_string)
