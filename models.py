@@ -369,8 +369,8 @@ class Topic(Base):
     __tablename__ = 'topics'
     link = sa.Column(sa.String(255), unique=True, primary_key=True)
     name = sa.Column(sa.String(255), nullable=True)
-    is_open = sa.Column(sa.Boolean, default=True)
-    ending_events_datetime = sa.Column(sa.DateTime)
+    is_open = sa.Column(sa.Boolean, default=True, nullable=False)
+    last_event_end = sa.Column(sa.DateTime)
 
     def __init__(self, link, name=""):
         self.is_open = True
