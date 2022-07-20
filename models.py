@@ -93,26 +93,17 @@ class Event(Base):
         return self.points
 
     def _is_perfect_score(self, result_event):
-        try:
-            # parsing to int by map
-            bet_result_home, bet_result_away = list(map(int, self.bet_result.split('-')))
-            ended_result_home, ended_result_away = list(map(int, result_event.ended_result.split('-')))
-        except ValueError:
-            logger.error("Parsing scores failed in Event")
-            return False
-        else:
-            return bet_result_home == ended_result_home and bet_result_away == ended_result_away
+            home_cond = self.home_score == result_event.home_score
+            away_cond = self.away_score == result_event.away_score
+            return home_cond and away_cond
 
     def _is_there_two_points(self, result_event):
-        score_home, score_away = result_event.ended_result.split('-')
-        bet_score_home, bet_score_away = self.bet_result.split('-')
-        score_home = int(score_home)
-        score_away = int(score_away)
-        bet_score_home = int(bet_score_home)
-        bet_score_away = int(bet_score_away)
-        return (score_home == score_away and bet_score_home == bet_score_away
-                or score_home > score_away and bet_score_home > bet_score_away
-                or score_home < score_away and bet_score_home < bet_score_away)
+        return ((self.home_score == self.away_score
+                 and result_event.home_score == result_event.away_score)
+                or (self.home_score > self.away_score
+                    and result_event.home_score > result_event.away_score)
+                or (self.home_score < self.away_score
+                    and result_event.home_score < result_event.away_score))
 
     @classmethod
     def _parse_winner_type(cls, line, year=None):
@@ -176,8 +167,8 @@ class Event(Base):
         obj = cls()
         obj.home_team = home_name
         obj.away_team = away_name
-        # TODO get rid bet_result
-        obj.bet_result =  '-'.join([home_score, away_score])
+        obj.home_score = home_score
+        obj.away_score = away_score
         obj.start_time = start_time
         return obj
 
