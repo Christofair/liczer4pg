@@ -200,8 +200,6 @@ class TestFeature(unittest.TestCase):
                 event.ended_result = "1-1"
             elif event.home_team == 'Gangwon FC':
                 event.ended_result = "4-2"
-        # for typer in typers:
-        #     print(f'typer {typer.name} got {typer.bet.count_point(events_to_compare)} points')
         correct_results = [2,0,0]
         for i in range(3):
             self.assertEqual(typers[i].bet.count_point(events_to_compare), correct_results[i])
@@ -292,6 +290,5 @@ class TestDB(unittest.TestCase):
 
         with sa.orm.Session(self.engine) as session:
             typers = session.query(models.Typer, models.Bet).join(models.Bet).all()
-            print(typers)
             self.assertEqual(['nicekovsky', 'daro', 'bazukaczeczek', 'idob', 'unsub'],
                              [typer[0].name for typer in typers])
