@@ -98,7 +98,7 @@ class TestModels(unittest.TestCase):
                                                                       'unsub', 'idob']])
         self.assertEqual(set(), typers.difference(test_data_typers))
 
-    def test_typers_bets(self):
+    def test_parsing_typers_bets_scores(self):
         """Check if collected bets are correct for each typer"""
         post = [p for p in self.posts if models.Typer.get_owner(p) == "nicekovsky"][0]
         nicekovsky_bet_test_data = models.Bet()
@@ -235,21 +235,21 @@ class TestFeature(unittest.TestCase):
         response = requests.get("https://pogrywamy.pl/topic/16874-typowanie-1-mlb-21072022/#comment-86877")
         self.assertFalse(response.status_code != 200)
         posts = utils.collect_posts_from_topic(response.content.decode('utf-8'))
+        events_to_compare = models.Event.get_pattern_events(posts)
         typers = []
         for post in posts:
             typer = models.Typer(models.Typer.get_owner(post), post)
-            typer.load_bet()
+            typer.load_bet('winner', events_to_compare)
             typers.append(typer)
-        # print(typers)
-        events_to_compare = models.Event.get_pattern_events(posts)
         self.assertFalse(not events_to_compare)
-        events_to_compare[0].home_score = 1
-        events_to_compare[1].away_score = 1
-        events_to_compare[2].away_score = 1
-        events_to_compare[3].home_score = 1
+        events_to_compare[0].winner = events_to_compare[0].home_team
+        events_to_compare[1].winner = events_to_compare[1].away_team
+        events_to_compare[2].winner = events_to_compare[2].away_team
+        events_to_compare[3].winner = events_to_compare[3].home_team
         correct_results = [8, 4]
         for i in range(len(typers)):
-            self.assertEqual(typers[i].bet.count_point(events_to_compare), correct_results[i])
+            self.assertEqual(typers[i].bet.count_point(events_to_compare, kind='winner'),
+                             correct_results[i])
         pass
 
 

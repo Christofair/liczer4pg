@@ -22,7 +22,8 @@ def collect_posts_from_topic(topic_html_doc: str) -> list[html.Element]:
             break
     return posts
 
-def get_post_timestamp(post, timezone='Europe/Warsaw'):
+def get_post_timestamp(post, timezone='Europe/Warsaw') -> datetime:
+    """Get timestamp from `post` and convert to `timezone`"""
     output_timezone = pytz.timezone(timezone)
     utc_timezone = pytz.timezone('utc')
     t = post.xpath('*//time')[0].get('datetime')
@@ -32,3 +33,23 @@ def get_post_timestamp(post, timezone='Europe/Warsaw'):
     # get rid of seconds and miliseconds then treat it as in utc timezone
     t = utc_timezone.localize(datetime.fromisoformat(t[:t.rindex(':')]))
     return output_timezone.normalize(t)
+
+def get_all_teams_names(events: list["Event"]) -> list[str]:
+    """Collect names of home and away teams from events list."""
+    names = []
+    for event in events:
+        names.extend((event.home_team, event.away_team))
+    return names
+
+def get_timestamp_from_typujemy_line(line, year):
+    start_time = datetime(1970,1,1)
+    tsr = re.search(
+        r"\(.*typujemy +do +(\d+).(\d+)(?:\.\d{2,4}){0,1} +do +godziny +(\d+):(\d+).*\)",
+        line.replace('\xa0',' ')
+    )
+    if tsr:
+        start_time = datetime(year, int(tsr.group(2)), int(tsr.group(1)), int(tsr.group(3)),
+                            int(tsr.group(4)))
+    else:
+        raise ValueError("Pattern event doesn't have time line")
+    return start_time
