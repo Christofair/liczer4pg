@@ -225,13 +225,12 @@ class TestFeature(unittest.TestCase):
                 event.result = "3-0"
             elif event.home_team == 'Polska':
                 event.result = "3-1"
-        correct_results = [8, 8, 8, 9, 10]
+        correct_results = [8, 8, 8, 9, 10, 5]
         for i in range(len(typers)):
             self.assertEqual(typers[i].bet.count_point(events_to_compare), correct_results[i])
 
     def test_counting_points_with_winner_type(self):
         """Check if counted points are correctly sum up."""
-        # Will fail for now.
         response = requests.get("https://pogrywamy.pl/topic/16874-typowanie-1-mlb-21072022/#comment-86877")
         self.assertFalse(response.status_code != 200)
         posts = utils.collect_posts_from_topic(response.content.decode('utf-8'))
@@ -246,11 +245,10 @@ class TestFeature(unittest.TestCase):
         events_to_compare[1].winner = events_to_compare[1].away_team
         events_to_compare[2].winner = events_to_compare[2].away_team
         events_to_compare[3].winner = events_to_compare[3].home_team
-        correct_results = [8, 4]
+        correct_results = [8, 4, 6]
         for i in range(len(typers)):
             self.assertEqual(typers[i].bet.count_point(events_to_compare, kind='winner'),
                              correct_results[i])
-        pass
 
 
 class TestDB(unittest.TestCase):

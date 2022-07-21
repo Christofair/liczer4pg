@@ -70,27 +70,29 @@ class Event(Base):
         stra = []
         if self.start_time:
             stra.append(f"\nStart at {self.start_time.ctime()}\n")
-        stra.append(f"{self.home_team}\t{self.result}\t{self.away_team}")
+        if self.winner is not None and self.result == "0-0":
+            stra.append(f"{self.home_team}\tVS\t{self.away_team}")
+            stra.append(f"\n[WINNER]\t{self.winner}")
+        else:
+            stra.append(f"{self.home_team}\t{self.result}\t{self.away_team}")
         return ''.join(stra)
 
     def count_point_scores(self, result_event):
         if self != result_event:
             raise ValueError("These events are different.")
         if self._is_perfect_score(result_event):
-            self.points = 3
+            return 3
         elif self._is_there_two_points(result_event):
-            self.points = 2
-        else:
-            self.points = 0
-        return self.points
+            return 2
+        return 0
 
     def count_point_winner(self, result_event):
         # check if winner is play in this event at all
         if self.winner in self.home_team or self.winner in self.away_team:
-            self.points = 2 if self.winner == result_event.winner else 0
+            return 2 if self.winner == result_event.winner else 0
         else:
             raise ValueError("That player or team was not play in this event")
-        return self.points
+        return 0
 
     def _is_perfect_score(self, result_event):
             home_cond = self.home_score == result_event.home_score
