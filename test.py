@@ -251,6 +251,7 @@ class TestFeature(unittest.TestCase):
 
 class TestDB(unittest.TestCase):
     engine = None
+    SessionFactory = None
 
     @classmethod
     def setUpClass(cls):
@@ -263,6 +264,7 @@ class TestDB(unittest.TestCase):
         # The question is, how to check that DB exists?
         if not os.path.exists('./TestDB.db'):
             cls.fail(cls, "DB TEST FAIL")
+        cls.SessionFactory = sa.orm.sessionmaker(cls.engine)
 
     @classmethod
     def tearDownClass(cls):
@@ -280,6 +282,8 @@ class TestDB(unittest.TestCase):
             typers.append(models.Typer(models.Typer.get_owner(post), post))
             typers[-1].load_bet()
             typers[-1].add_bet()
+            for event in typers[-1].bet.events:
+                event.sport = 'football'
 
         with sa.orm.Session(self.engine) as session:
             session.add_all(typers)
@@ -292,3 +296,33 @@ class TestDB(unittest.TestCase):
             typers = session.query(models.Typer, models.Bet).join(models.Bet).all()
             self.assertEqual(['nicekovsky', 'daro', 'bazukaczeczek', 'idob', 'unsub'],
                              [typer[0].name for typer in typers])
+    
+    def test_winning_typers_percentage_of_events(self):
+        """Collects all events of player and count how many it wins from it."""
+        krysto_typer = models.Typer('krystofair', None)
+        artificial_events = [
+            models.Event(home_team='a', away_team='b', points=2, home_score=1, sport='football'),
+            models.Event(home_team='a', away_team='b', points=3, away_score=1, sport='football'),
+            models.Event(home_team='a', away_team='b', points=0, home_score=4, sport='volleyball'),
+            models.Event(home_team='a', away_team='b', points=0, home_score=3, sport='ice-hockey')
+        ]
+        bet = models.Bet()
+        bet.events = artificial_events
+        krysto_typer.add_bet(bet)
+        with self.SessionFactory() as session:
+            session.add(krysto_typer)
+            session.commit()
+        with self.SessionFactory() as session:
+            result = session.execute(sa.select(models.Event.points).join(models.Bet).join(models.Typer)
+                                     .where(models.Typer.name == 'krystofair'))
+            all_events_points = [event_points[0] for event_points in result]
+            count_gt_zero_events = len([True for points in all_events_points if points > 0])
+            self.assertEqual(int(count_gt_zero_events*100/len(all_events_points)), 50)
+    
+    def test_how_many_times_typer_bets_over_one_and_a_half(self):
+        """Check how many times the bet result was great than or equal 2:0, 1:1 or 0:2"""
+        self.skipTest()
+    
+    def test_in_which_sport_typer_is_the_best(self):
+        """If there are bets from different sports then check which one are the best from them."""
+        self.skipTest()

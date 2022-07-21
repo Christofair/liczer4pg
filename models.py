@@ -20,7 +20,7 @@ class Event(Base):
     id = sa.Column(sa.Integer, sa.Sequence('event_id_seq'), primary_key=True)
     bet_id = sa.Column(sa.Integer, sa.ForeignKey('bets.id'))
     bet = orm.relationship('Bet', back_populates='events')
-    start_time = sa.Column(sa.DateTime, nullable=False, default='19700101')
+    start_time = sa.Column(sa.DateTime, nullable=False, default=datetime(1970,1,1))
     home_team = sa.Column(sa.String(255), nullable=False)
     away_team = sa.Column(sa.String(255), nullable=False)
     home_score = sa.Column(sa.Integer, default=None, nullable=True)
@@ -30,6 +30,7 @@ class Event(Base):
         '(winner is NULL and home_score is not NULL and away_score is not NULL)'
         ' or (winner is not NULL and home_score is NULL and away_score is NULL)')
     points = sa.Column(sa.Integer, default=0, nullable=False)
+    sport = sa.Column(sa.String(128), nullable=False)
 
     def set_score(self, value):
         """Setting score for event. If there is winner type of bet, then
@@ -197,7 +198,7 @@ class Event(Base):
                 for i in range(lines.index(flist[0].string), len(lines)):
                     try:
                         pattern_events.append(Event._parse_pattern_event(lines[i],
-                                                                            year=post_year))
+                                                                         year=post_year))
                     except ValueError as e:
                         # only logging, that there was an exception 
                         # Never silently pass an exception.
@@ -224,6 +225,7 @@ class Bet(Base):
     events = orm.relationship('Event', back_populates='bet')
     typer_id = sa.Column(sa.Integer, sa.ForeignKey('typers.id'))
     typer = orm.relationship('Typer', back_populates='bets')
+    topic_link = sa.Column(sa.String(255), sa.ForeignKey('topics.link'))
 
     def __init__(self):
         self.events = []
@@ -263,7 +265,7 @@ class Bet(Base):
 
     # in that method get single post as in article tag
     @classmethod
-    def parse(cls, post, pattern_event=None) -> "Bet":
+    def parse(cls, post) -> "Bet":
         if isinstance(post, str):
             post_root = html.fragment_fromstring(post)
         else:
@@ -367,9 +369,9 @@ class Typer(Base):
     def add_bet(self, bet=None):
         if bet is not None:
             self.bets.append(bet)
+            self.bet = bet
         elif self.bet is not None:
             self.bets.append(self.bet)
-            self.bet = bet
 
     def when_written(self):
         return utils.get_post_timestamp(self.post)
@@ -389,6 +391,8 @@ class Topic(Base):
     name = sa.Column(sa.String(255), nullable=True)
     is_open = sa.Column(sa.Boolean, default=True, nullable=False)
     last_event_end = sa.Column(sa.DateTime)
+    sport = sa.Column(sa.String(128))
+    bets = orm.relationship('Bet')
 
     def __init__(self, link, name=""):
         self.is_open = True
