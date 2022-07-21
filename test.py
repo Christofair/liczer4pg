@@ -271,9 +271,6 @@ class TestDB(unittest.TestCase):
             typers[-1].load_bet()
             typers[-1].add_bet()
 
-        import pdb
-        pdb.set_trace()
-
         with sa.orm.Session(self.engine) as session:
             session.add_all(typers)
             session.commit()
