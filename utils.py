@@ -1,6 +1,7 @@
 from lxml import html
 import re
 from datetime import datetime
+import pytz
 
 
 def collect_posts_from_topic(topic_html_doc: str) -> list[html.Element]:
@@ -21,9 +22,13 @@ def collect_posts_from_topic(topic_html_doc: str) -> list[html.Element]:
             break
     return posts
 
-def get_post_timestamp(post):
+def get_post_timestamp(post, timezone='Europe/Warsaw'):
+    output_timezone = pytz.timezone(timezone)
+    utc_timezone = pytz.timezone('utc')
     t = post.xpath('*//time')[0].get('datetime')
     if not t:
         t = post.xpath('*//time')[1].get('datetime')
-    t = t.replace('T', ' ').rstrip('Z')
-    return datetime.fromisoformat(t)
+    t = t.replace('T', ' ')
+    # get rid of seconds and miliseconds then treat it as in utc timezone
+    t = utc_timezone.localize(datetime.fromisoformat(t[:t.rindex(':')]))
+    return output_timezone.normalize(t)

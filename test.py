@@ -3,6 +3,7 @@ import unittest
 import lxml
 from time import sleep
 import requests
+from datetime import datetime
 
 # importing tools to manage databsae
 import sqlalchemy as sa
@@ -143,7 +144,20 @@ class TestModels(unittest.TestCase):
 
     def test_timestamp_of_post(self):
         """Check date of written post"""
-        pass
+        from pytz import timezone
+        warsaw = timezone('Europe/Warsaw')
+        timestamps = []
+        for post in self.posts:
+            timestamps.append(utils.get_post_timestamp(post))
+        correct_timestamps = [
+            datetime(2022, 4, 7, 8, 36),
+            datetime(2022, 4, 7, 13, 24),
+            datetime(2022, 4, 7, 14, 55),
+            datetime(2022, 4, 7, 16, 45),
+            datetime(2022, 4, 7, 22, 00)
+        ]
+        correct_timestamps = list(map(warsaw.localize, correct_timestamps))
+        self.assertEqual(timestamps, correct_timestamps)
 
     def test_name_from_link_in_topic(self):
         t = models.Topic(
