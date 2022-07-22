@@ -53,3 +53,21 @@ def get_timestamp_from_typujemy_line(line, year):
     else:
         raise ValueError("Pattern event doesn't have time line")
     return start_time
+
+def normalize_name(word: str):
+    """The function normalize polish words to do not use diacritic chars"""
+    letter_map = {
+        'ą': 'a',
+        'ć': 'c',
+        'ę': 'e',
+        'ł': 'l',
+        'ó': 'o',
+        'ś': 's',
+        'ż': 'z',
+        'ź': 'z'
+    }
+    # normalize to lower and not WS-es before and after
+    w = word.lower().strip()
+    for k, v in letter_map:
+        w = w.replace(k, v)
+    return w
