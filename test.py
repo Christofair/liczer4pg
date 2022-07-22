@@ -14,7 +14,7 @@ import utils
 
 logger = logging.getLogger(__name__)
 
-class TestApp(unittest.TestCase):
+class TestCommons(unittest.TestCase):
     doc = None
     real_posts = None
 
@@ -60,6 +60,15 @@ class TestApp(unittest.TestCase):
                 self.assertEqual(teams[idx][1], event.away_team)
             except:
                 pass
+
+    def test_normalizing_names(self):
+        names = ["Usa", "USA", "Włochy", "Bośnia i Hercegowina",
+                 "   PIłka nożna", "Atlético Madrid", 'Deportivo Alavés     ']
+        after_normalization = ['usa','usa','wlochy','bosnia i hercegowina', 'pilka nozna',
+                               'atletico madrid', 'deportivo alaves']
+        assert len(names) == len(after_normalization)
+        for i in range(len(names)):
+            self.assertEqual(after_normalization[i], utils.normalize_name(names[i]))
 
 def _create_event(home, away, bet_result):
     event = models.Event()
@@ -321,8 +330,8 @@ class TestDB(unittest.TestCase):
     
     def test_how_many_times_typer_bets_over_one_and_a_half(self):
         """Check how many times the bet result was great than or equal 2:0, 1:1 or 0:2"""
-        self.skipTest()
+        self.skipTest("This is not specially important test")
     
     def test_in_which_sport_typer_is_the_best(self):
         """If there are bets from different sports then check which one are the best from them."""
-        self.skipTest()
+        self.skipTest("This test only for me to try feature")

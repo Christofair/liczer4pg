@@ -56,18 +56,11 @@ def get_timestamp_from_typujemy_line(line, year):
 
 def normalize_name(word: str):
     """The function normalize polish words to do not use diacritic chars"""
-    letter_map = {
-        'ą': 'a',
-        'ć': 'c',
-        'ę': 'e',
-        'ł': 'l',
-        'ó': 'o',
-        'ś': 's',
-        'ż': 'z',
-        'ź': 'z'
+    letter_map = { 'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l', 'ó': 'o',
+        'ś': 's', 'ż': 'z', 'ź': 'z', 'é': 'e', 'á': 'a',
     }
     # normalize to lower and not WS-es before and after
     w = word.lower().strip()
-    for k, v in letter_map:
+    for k, v in letter_map.items():
         w = w.replace(k, v)
     return w
