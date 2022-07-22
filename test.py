@@ -39,8 +39,8 @@ class TestCommons(unittest.TestCase):
                     pass_counter+=1
                     break
         self.assertEqual(pass_counter, len(self.real_posts))
-        # fast test of getting rang of user 
-        # response = requests.get('https://pogrywamy.pl/topic/16896-screeny-tw%C3%B3j-nick/')
+
+    def test_get_post_owner_and_its_rangs(self):
         with open('screeny_ban.html', encoding='utf-8') as indexfile:
             doc = indexfile.read()
         root = lxml.html.fromstring(doc)
