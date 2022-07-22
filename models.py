@@ -325,8 +325,8 @@ class Typer(Base):
     def __init__(self, name, post):
         self.name = name
         if post is not None:
-            self._post = self._parse_post_if_string(post)
-            # self.posts.append(et2str(self._parse_post_if_string(post)))
+            self._post = utils.parse_post_if_string(post)
+            # self.posts.append(et2str(utils.parse_post_if_string(post)))
         self.bet = None
 
     def __eq__(self, other):
@@ -342,22 +342,12 @@ class Typer(Base):
     def post(self):
         return self._post
         # else:
-        #     self._post = self._parse_post_if_string(self.wpis)
+        #     self._post = utils.parse_post_if_string(self.wpis)
 
     @post.setter
     def post(self, value):
-        self._post = self._parse_post_if_string(value)
+        self._post = utils.parse_post_if_string(value)
         # self.posts.append(Post(typer_id=self.id, post=et2str(self._post)))
-
-    @staticmethod
-    def _parse_post_if_string(post):
-        if isinstance(post, str):
-            p = html.fragment_fromstring(post)
-        elif isinstance(post, html.HtmlElement):
-            p = post
-        else:
-            raise ValueError("[TYPER INIT] Post type was wrong.")
-        return p
 
     def load_bet(self, kind='scores', pattern_events=[]):
         if kind == 'scores':
@@ -375,13 +365,6 @@ class Typer(Base):
 
     def when_written(self):
         return utils.get_post_timestamp(self.post)
-
-    @staticmethod
-    def get_owner(post):
-        p = Typer._parse_post_if_string(post)
-        name = p.xpath('aside/h3/strong/a/span')[0].text_content()
-        name = name.lstrip('\xa0').lower()
-        return name
 
 
 class Topic(Base):

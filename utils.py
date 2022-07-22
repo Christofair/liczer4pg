@@ -1,8 +1,19 @@
+from typing import Union
+
 from lxml import html
 import re
 from datetime import datetime
 import pytz
 
+
+def parse_post_if_string(post) -> html.HtmlElement:
+    if isinstance(post, str):
+        p = html.fragment_fromstring(post)
+    elif isinstance(post, html.HtmlElement):
+        p = post
+    else:
+        raise ValueError("Post type was neither str nor html.HtmlElement.")
+    return p
 
 def collect_posts_from_topic(topic_html_doc: str) -> list[html.Element]:
     """Return all post from topic as html.Element.
@@ -12,7 +23,10 @@ def collect_posts_from_topic(topic_html_doc: str) -> list[html.Element]:
     try:
         doc = html.document_fromstring(topic_html_doc)
     except Exception as e:
-        print(e)
+        if isinstance(topic_html_doc, html.HtmlElement):
+            doc = topic_html_doc
+        else:
+            raise
     posts: list[html.Element] = doc.xpath('//article')
     for post in posts:
         # TODO: Add condition to searching "punktacja" string.
@@ -33,6 +47,19 @@ def get_post_timestamp(post, timezone='Europe/Warsaw') -> datetime:
     # get rid of seconds and miliseconds then treat it as in utc timezone
     t = utc_timezone.localize(datetime.fromisoformat(t[:t.rindex(':')]))
     return output_timezone.normalize(t)
+
+def get_post_owner(post, check_rang=False) -> Union[str, tuple[str, list[str]]]:
+    """Retrieve the owner of post from post, and if specified get all its rangs on forum"""
+    p = parse_post_if_string(post)
+    name = p.xpath('aside/h3/strong/a/span')[0].text_content()
+    name = name.strip('\xa0').strip('\n').lower()
+    if check_rang:
+        major_rang = p.xpath('aside//*[@data-role="group"]')
+        rest_rangs = p.xpath('aside//*[@data-role="axen-group-secondary"]')
+        rangs = major_rang + rest_rangs
+        rangs = [rang.text_content().strip('\n').strip('\xa0').lower() for rang in rangs]
+        return (name, rangs)
+    return name
 
 def get_all_teams_names(events: list["Event"]) -> list[str]:
     """Collect names of home and away teams from events list."""

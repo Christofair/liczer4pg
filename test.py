@@ -5,7 +5,7 @@ from time import sleep
 import requests
 from datetime import datetime
 
-# importing tools to manage databsae
+# importing tools to manage database
 import sqlalchemy as sa
 import os  # module for checking file existing.
 
@@ -39,6 +39,15 @@ class TestCommons(unittest.TestCase):
                     pass_counter+=1
                     break
         self.assertEqual(pass_counter, len(self.real_posts))
+        # fast test of getting rang of user 
+        # response = requests.get('https://pogrywamy.pl/topic/16896-screeny-tw%C3%B3j-nick/')
+        with open('screeny_ban.html', encoding='utf-8') as indexfile:
+            doc = indexfile.read()
+        root = lxml.html.fromstring(doc)
+        others_posts = utils.collect_posts_from_topic(root)
+        users_rangs = [utils.get_post_owner(post, True) for post in others_posts]
+        expected_results = [('t3st0v1r0n', ['użytkownik']),
+                            ('radecky', ['moderator', 'antycheat', 'admin ts3', 'vip'])]
 
     def test_getting_pattern_events(self):
         events = models.Event.get_pattern_events(self.real_posts)
@@ -101,7 +110,7 @@ class TestModels(unittest.TestCase):
 
     def test_getting_all_typers(self):
         """Check about users who betting in that topic"""
-        typers = set([models.Typer(models.Typer.get_owner(post), post) for post in self.posts])
+        typers = set([models.Typer(utils.get_post_owner(post), post) for post in self.posts])
         test_data_typers = set([models.Typer(name, None) for name in ['nicekovsky',
                                                                       'bazukaczeczek', 'daro',
                                                                       'unsub', 'idob']])
@@ -109,7 +118,7 @@ class TestModels(unittest.TestCase):
 
     def test_parsing_typers_bets_scores(self):
         """Check if collected bets are correct for each typer"""
-        post = [p for p in self.posts if models.Typer.get_owner(p) == "nicekovsky"][0]
+        post = [p for p in self.posts if utils.get_post_owner(p) == "nicekovsky"][0]
         nicekovsky_bet_test_data = models.Bet()
         nicekovsky_bet_test_data.events = [
             _create_event("Sevilla", "Granada", "3-0"),
@@ -130,7 +139,7 @@ class TestModels(unittest.TestCase):
             self.assertEqual(event_test_data.away_team, event.away_team)
             self.assertEqual(event_test_data.bet_result, event.bet_result)
 
-        post = [p for p in self.posts if models.Typer.get_owner(p) == "idob"][0]
+        post = [p for p in self.posts if utils.get_post_owner(p) == "idob"][0]
         idob_bet_test_data = models.Bet()
         idob_bet_test_data.events = [
             _create_event("Sevilla", "Granada","2-0"),
@@ -186,13 +195,14 @@ class TestFeature(unittest.TestCase):
         topic_response = requests.get(
             'https://pogrywamy.pl/topic/16702-typowanie-02-k-league-1-22062022/#comment-86170'
         )
+        self.skipTest('This topic was deleted.')
         self.assertFalse(topic_response.status_code != 200)
         # build doc tree through html parser
         # topic = Topic(topic_response.url)
         posts = utils.collect_posts_from_topic(topic_response.content.decode('utf-8'))
         typers = []
         for post in posts:
-            typer = models.Typer(models.Typer.get_owner(post), post)
+            typer = models.Typer(utils.get_post_owner(post), post)
             typer.load_bet()
             typers.append(typer)
         events_to_compare = models.Event.get_pattern_events(posts)
@@ -219,7 +229,7 @@ class TestFeature(unittest.TestCase):
         posts = utils.collect_posts_from_topic(topic_response.content.decode('utf-8'))
         typers = []
         for post in posts:
-            typer = models.Typer(models.Typer.get_owner(post), post)
+            typer = models.Typer(utils.get_post_owner(post), post)
             typer.load_bet()
             typers.append(typer)
         events_to_compare = models.Event.get_pattern_events(posts)
@@ -244,7 +254,7 @@ class TestFeature(unittest.TestCase):
         events_to_compare = models.Event.get_pattern_events(posts)
         typers = []
         for post in posts:
-            typer = models.Typer(models.Typer.get_owner(post), post)
+            typer = models.Typer(utils.get_post_owner(post), post)
             typer.load_bet('winner', events_to_compare)
             typers.append(typer)
         self.assertFalse(not events_to_compare)
@@ -288,7 +298,7 @@ class TestDB(unittest.TestCase):
         self.assertTrue(len(posts) > 0)
         typers = []
         for post in posts:
-            typers.append(models.Typer(models.Typer.get_owner(post), post))
+            typers.append(models.Typer(utils.get_post_owner(post), post))
             typers[-1].load_bet()
             typers[-1].add_bet()
             for event in typers[-1].bet.events:
