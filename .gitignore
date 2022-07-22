@@ -9,4 +9,4 @@ test_posts/
 .mylogin.cnf
 Pipfile
 Pipfile.lock
-TestDB.db
+*.db
