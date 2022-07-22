@@ -305,7 +305,6 @@ class TestDB(unittest.TestCase):
         models.Base.metadata.schema="typerkapg"
         models.Base.metadata.create_all(cls.engine)
         # check if database created.
-        # The question is, how to check that DB exists?
         if not os.path.exists('./TestDB.db'):
             cls.fail(cls, "DB TEST FAIL")
         cls.SessionFactory = sa.orm.sessionmaker(cls.engine)

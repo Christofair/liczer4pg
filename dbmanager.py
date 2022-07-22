@@ -40,3 +40,37 @@ if __name__ == '__main__':
     #     print(f"{password}")
     #     os.system('"A:\\Program Files\\mysql-8.0.22-winx64\\bin\\mysqldump.exe" ' 
     #                f'-u {login} -password {password} typerkapg > {filename}')
+
+
+class DBManager:
+    """I will see of using this"""
+
+    def __init__(self, debug=False):
+        self.db_ready = True
+        if not debug:
+            login, password = ('','')
+            try:
+                with open('.mylogin.cnf') as dbkey:
+                    _, login, password = dbkey.read().splitlines()
+                    login = login.split('=')[1]
+                    password = password.split('=')[1]
+                    self.db_ready = True
+            except OSError:
+                print("Opening config file failed.")
+                self.db_ready = False
+            engine = sa.create_engine(f"mysql+pymysql://{login}:{password}@localhost/TyperkaPG")
+        else:
+            engine = sa.create_engine("sqlite:///DebugDB.db")
+            # tworzenie modeli w testowej bazie danych
+            models.Base.metadata.schema="typerkapg"
+            models.Base.metadata.create_all(engine)
+            # check if database created.
+            if not os.path.exists('./DebugDB.db'):
+                self.db_ready = False
+        self.session_maker = sa.orm.sessionmaker(bind=engine)
+
+    def session(self):
+        if self.db_ready:
+            return self.session_maker()
+        else:
+            raise ValueError("DB was not initialized well")
