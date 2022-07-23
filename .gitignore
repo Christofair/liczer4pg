@@ -12,3 +12,4 @@ test_posts/
 Pipfile
 Pipfile.lock
 *.db
+*.txt
