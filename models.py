@@ -194,7 +194,7 @@ class Event(Base):
             lines = list(
                 filter(None, post.cssselect('.cPost_contentWrap')[0].text_content().splitlines()))
             flist = [c.search(l) for l in lines if c.search(l) is not None]
-            if flist:
+            if flist and 'typer' in utils.get_post_owner(post, True)[1]:
                 for i in range(lines.index(flist[0].string), len(lines)):
                     try:
                         pattern_events.append(Event._parse_pattern_event(lines[i],
