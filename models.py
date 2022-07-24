@@ -29,6 +29,7 @@ class Event(Base):
     result_required = sa.CheckConstraint(
         '(winner is NULL and home_score is not NULL and away_score is not NULL)'
         ' or (winner is not NULL and home_score is NULL and away_score is NULL)')
+    # points are here because we can determine more precisely if the typer tied up to it hit
     points = sa.Column(sa.Integer, default=0, nullable=False)
     sport = sa.Column(sa.String(128), nullable=False)
 
@@ -349,23 +350,28 @@ class Typer(Base):
         self._post = utils.parse_post_if_string(value)
         # self.posts.append(Post(typer_id=self.id, post=et2str(self._post)))
 
-    def load_bet(self, kind='scores', pattern_events=[]):
-        if kind == 'scores':
+    def _load_bet(self, pattern_events=None):
+        if not pattern_events:
             self.bet = Bet.parse(self.post)
-        elif kind == 'winner':
-            if len(pattern_events) > 0:
-                self.bet = Bet.parse_winner_type(self.post, pattern_events)
+        else:
+            self.bet = Bet.parse_winner_type(self.post, pattern_events)
 
-    def add_bet(self, bet=None):
+    def add_bet(self, bet=None, pattern_events=None):
         if bet is not None:
             self.bets.append(bet)
             self.bet = bet
         elif self.bet is not None:
             self.bets.append(self.bet)
+        else:
+            if pattern_events:
+                self._load_bet(pattern_events)
+            else:
+                self._load_bet()
+            self.bets.append(self.bet)
 
     def when_written(self):
         return utils.get_post_timestamp(self.post)
-    
+
     def count_points(self, results_events):
         return sum([bet.count_point(results_events) for bet in self.bets])
 
@@ -378,6 +384,7 @@ class Topic(Base):
     is_open = sa.Column(sa.Boolean, default=True, nullable=False)
     last_event_end = sa.Column(sa.DateTime)
     sport = sa.Column(sa.String(128))
+    # tournament = sa.Column(sa.String(128), nullable=False)
     bets = orm.relationship('Bet')
 
     def __init__(self, link, name=""):

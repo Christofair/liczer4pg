@@ -203,7 +203,7 @@ class TestFeature(unittest.TestCase):
         typers = []
         for post in posts:
             typer = models.Typer(utils.get_post_owner(post), post)
-            typer.load_bet()
+            typer._load_bet()
             typers.append(typer)
         events_to_compare = models.Event.get_pattern_events(posts)
         for event in events_to_compare:
@@ -230,7 +230,7 @@ class TestFeature(unittest.TestCase):
         typers = []
         for post in posts:
             typer = models.Typer(utils.get_post_owner(post), post)
-            typer.load_bet()
+            typer._load_bet()
             typers.append(typer)
         events_to_compare = models.Event.get_pattern_events(posts)
         for event in events_to_compare:
@@ -255,7 +255,7 @@ class TestFeature(unittest.TestCase):
         typers = []
         for post in posts:
             typer = models.Typer(utils.get_post_owner(post), post)
-            typer.load_bet('winner', events_to_compare)
+            typer._load_bet(events_to_compare)
             typers.append(typer)
         self.assertFalse(not events_to_compare)
         events_to_compare[0].winner = events_to_compare[0].home_team
@@ -289,7 +289,6 @@ class TestDB(unittest.TestCase):
     def tearDownClass(cls):
         if os.path.exists('./TestDB.db'):
             os.remove('./TestDB.db')
-        pass
 
     def test_saving_typers_with_bets(self):
         """lxml.html.Element object save to database."""
@@ -299,7 +298,7 @@ class TestDB(unittest.TestCase):
         typers = []
         for post in posts:
             typers.append(models.Typer(utils.get_post_owner(post), post))
-            typers[-1].load_bet()
+            typers[-1]._load_bet()
             typers[-1].add_bet()
             for event in typers[-1].bet.events:
                 event.sport = 'football'
@@ -331,17 +330,53 @@ class TestDB(unittest.TestCase):
         with self.SessionFactory() as session:
             session.add(krysto_typer)
             session.commit()
+            session.flush()
         with self.SessionFactory() as session:
             result = session.execute(sa.select(models.Event.points).join(models.Bet).join(models.Typer)
                                      .where(models.Typer.name == 'krystofair'))
             all_events_points = [event_points[0] for event_points in result]
             count_gt_zero_events = len([True for points in all_events_points if points > 0])
             self.assertEqual(int(count_gt_zero_events*100/len(all_events_points)), 50)
-    
+
     def test_how_many_times_typer_bets_over_one_and_a_half(self):
         """Check how many times the bet result was great than or equal 2:0, 1:1 or 0:2"""
         self.skipTest("This is not specially important test")
-    
+
     def test_in_which_sport_typer_is_the_best(self):
         """If there are bets from different sports then check which one are the best from them."""
         self.skipTest("This test only for me to try feature")
+
+class TestFunWithDB(,unittest.TestCase):
+    """Case for learning sqlalchemy more"""
+    engine = None
+    SessionFactory = None
+
+    @classmethod
+    def setUpClass(cls):
+        """Create testing database"""
+        cls.engine = sa.create_engine("sqlite:///TestDB.db")
+        models.Base.metadata.schema="typerkapg"
+        models.Base.metadata.create_all(cls.engine)
+        if not os.path.exists('./TestDB.db'):
+            cls.fail(cls, "DB TEST FAIL")
+        cls.SessionFactory = sa.orm.sessionmaker(cls.engine)
+
+    @classmethod
+    def tearDownClass(cls):
+        """remove db after all"""
+        if os.path.exists('./TestDB.db'):
+            os.remove('./TestDB.db')
+
+    def test_get_info_from_few_topics(self):
+        links = [
+            "https://pogrywamy.pl/topic/16862-typowanie-01-ekstraklasa-17072022/",
+            "https://pogrywamy.pl/topic/16875-typowanie-02-ecl-19072022/",
+            "https://pogrywamy.pl/topic/16895-typowanie-03-ecl-28072022/",
+            "https://pogrywamy.pl/topic/16522-typowanie-15-premier-league-19052022/"
+        ]
+        for link in links:
+            sleep(0.2)
+            posts = utils.collect_posts_from_topic(requests.get(link).content.decode('utf-8'))
+            for post in posts:
+                typer = models.Typer(utils.get_post_owner(post), post)
+                typer.add_bet()
