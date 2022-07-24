@@ -115,30 +115,37 @@ class Event(Base):
                 or (self.home_score < self.away_score
                     and result_event.home_score < result_event.away_score))
 
-    @classmethod
-    def parse_winner_type(cls, line, ref_event, year=None):
+class EventParser:
+    """Parser for events from users' posts"""
+
+    def __init__(self, /, ref_date, ref_events=None):
+        self.pattern = ref_events
+        self.base_date = ref_date
+
+    def parse_winner_type(self, line):
         sb = len(line)
+        start_time = self.base_date
         try:
             sb = line.index('(')
             thetime_line = line[sb:]
-            if not year:
-                year = date.today().year
-            start_time = utils.get_timestamp_from_typujemy_line(thetime_line, year)
+            start_time = utils.get_timestamp_from_typujemy_line(thetime_line, self.base_date.year)
         except ValueError:
             try: sb = line.index('\xa0')
             except: pass
-        obj = cls()
-        obj.winner = line[:sb].strip()
-        obj.start_time = start_time
-        obj.home_team = ref_event.home_team
-        obj.away_team = ref_event.away_team
-        obj.home_score = 0
-        obj.away_score = 0
-        return obj
+        if self.pattern is None:
+            ValueError("During parsing winner type event there was not pattern events in parser")
+        good_pattern_event = [event for event in self.pattern
+                              if event.home_team in line or event.away_team in line][0]
+        return Event(
+            start_time=start_time,
+            home_team=good_pattern_event.home_team,
+            away_team=good_pattern_event.away_team,
+            home_score=0,
+            away_score=0,
+            winner=line[:sb].strip()
+        )
 
-
-    @classmethod
-    def parse(cls, line, year=None):
+    def parse(self, line):
         """Load event from line"""
         pattern = r'(\d+).*-.*(\d+)'
         start_of_braces = line.index('(')
@@ -150,44 +157,41 @@ class Event(Base):
         home_name = home_name.replace('\xa0',' ').strip()
         away_name = away_name.replace('\xa0',' ').strip()
         thetime_line = line[start_of_braces:]
-        if not year:
-            year = date.today().year
         try:
-            start_time = utils.get_timestamp_from_typujemy_line(thetime_line, year)
+            start_time = utils.get_timestamp_from_typujemy_line(thetime_line, self.base_date.year)
         except Exception as e:
             logger.exception("Error during getting time")
             logger.info(f'parsing line with time was: {thetime_line!r}')
+            start_time = self.base_date
         if away_score is None or home_score is None:
             if away_score is not None or home_score is not None:
                 raise ValueError("[PARSER] Line no contain valid result")
         if not home_name or not away_name:
             raise ValueError("[PARSER] Event has no names for teams")
-        obj = cls()
-        obj.home_team = home_name
-        obj.away_team = away_name
-        obj.result = "-".join([home_score, away_score])
-        obj.start_time = start_time
-        return obj
-
-    @classmethod
-    def _parse_pattern_event(cls, line, year=None):
+        return Event(
+            home_team = home_name,
+            away_team = away_name,
+            start_time = start_time,
+            result = "-".join([home_score, away_score])
+        )
+    
+    @staticmethod
+    def _parse_pattern_event(line, year):
         """Load pattern event from line"""
         start_of_braces = line.index('(')
         processed_line = line[:start_of_braces]
         thetime_line = line[start_of_braces:]
-        if not year:
-            year = date.today().year
         start_time = utils.get_timestamp_from_typujemy_line(thetime_line, year)
         home, away = processed_line.split('-')
         home = home.replace('\xa0',' ').strip()
         away = away.replace('\xa0',' ').strip()
-        obj = cls()
-        obj.home_team = home
-        obj.away_team = away
-        obj.home_score = 0
-        obj.away_score = 0
-        obj.start_time = start_time
-        return obj
+        return Event(
+            home_team = home,
+            away_team = away,
+            home_score = 0,
+            away_score = 0,
+            start_time = start_time
+        )
 
     @staticmethod
     def get_pattern_events(posts: list[html.Element]) -> list["Event"]:
@@ -202,13 +206,11 @@ class Event(Base):
             if flist and 'typer' in utils.get_post_owner(post, True)[1]:
                 for i in range(lines.index(flist[0].string), len(lines)):
                     try:
-                        pattern_events.append(Event._parse_pattern_event(lines[i],
-                                                                         year=post_year))
+                        pattern_events.append(EventParser._parse_pattern_event(lines[i], post_year))
                     except ValueError as e:
                         # only logging, that there was an exception 
                         # Never silently pass an exception.
                         logger.info(e)
-                        pass  # value error can be passed away.
                     except Exception as e:
                         logger.exception(e)
                     if re.search(r"[Mm]oje [tT]ypy[:]", lines[i]) or lines[i] == '\xa0':
@@ -242,7 +244,8 @@ class Bet(Base):
         else:
             post_root = post
         bet = None
-        post_year = utils.get_post_timestamp(post).year
+        post_date = utils.get_post_timestamp(post)
+        parser = EventParser(ref_events=pattern_events, ref_date=post_date)
         comment_content = post_root.cssselect('.cPost_contentWrap')[0]
         names = utils.get_all_teams_names(pattern_events)
         lines = map(lambda x: x.replace('\xa0', ' '), comment_content.text_content().splitlines())
@@ -254,7 +257,7 @@ class Bet(Base):
                 for line in lines:
                     ref_event = [event for event in pattern_events
                                 if event.home_team in line or event.away_team in line][0]
-                    event = Event.parse_winner_type(line, ref_event, year=post_year)
+                    event = parser.parse_winner_type(line)
                     bet.events.append(event)
             except ValueError as e:
                 logger.error(e)
@@ -268,7 +271,8 @@ class Bet(Base):
             post_root = html.fragment_fromstring(post)
         else:
             post_root = post
-        post_year = utils.get_post_timestamp(post).year
+        post_date = utils.get_post_timestamp(post)
+        parser = EventParser(ref_date=post_date)
         comment_content = post_root.cssselect('.cPost_contentWrap')[0]
         lines = comment_content.text_content().splitlines()
         pattern = r'.+.*\d.*-.*\d.*(?:\(typujemy.*){0,1}'
@@ -276,7 +280,7 @@ class Bet(Base):
         lines = filter(c.search, lines)
         lines = [l.replace('\xa0',' ') for l in lines]
         try:
-            events = [Event.parse(line, year=post_year) for line in lines]
+            events = [parser.parse(line) for line in lines]
         except ValueError as e:
             logger.error(e)
         obj = cls()

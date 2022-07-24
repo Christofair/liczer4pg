@@ -50,7 +50,7 @@ class TestCommons(unittest.TestCase):
                             ('radecky', ['moderator', 'antycheat', 'admin ts3', 'vip'])]
 
     def test_getting_pattern_events(self):
-        events = models.Event.get_pattern_events(self.real_posts)
+        events = models.EventParser.get_pattern_events(self.real_posts)
         teams = [
             ['Sevilla', 'Granada'],
             ['Cádiz','Real Betis Balompié'],
@@ -205,7 +205,7 @@ class TestFeature(unittest.TestCase):
             typer = models.Typer(utils.get_post_owner(post), post)
             typer._load_bet()
             typers.append(typer)
-        events_to_compare = models.Event.get_pattern_events(posts)
+        events_to_compare = models.EventParser.get_pattern_events(posts)
         for event in events_to_compare:
             if event.home_team == 'Suwon FC':
                 event.ended_result = "3-0"
@@ -232,7 +232,7 @@ class TestFeature(unittest.TestCase):
             typer = models.Typer(utils.get_post_owner(post), post)
             typer._load_bet()
             typers.append(typer)
-        events_to_compare = models.Event.get_pattern_events(posts)
+        events_to_compare = models.EventParser.get_pattern_events(posts)
         for event in events_to_compare:
             if event.home_team == 'USA':
                 event.result = "0-3"
@@ -251,7 +251,7 @@ class TestFeature(unittest.TestCase):
         response = requests.get("https://pogrywamy.pl/topic/16874-typowanie-1-mlb-21072022/#comment-86877")
         self.assertFalse(response.status_code != 200)
         posts = utils.collect_posts_from_topic(response.content.decode('utf-8'))
-        events_to_compare = models.Event.get_pattern_events(posts)
+        events_to_compare = models.EventParser.get_pattern_events(posts)
         typers = []
         for post in posts:
             typer = models.Typer(utils.get_post_owner(post), post)
@@ -368,6 +368,7 @@ class TestFunWithDB(unittest.TestCase):
             os.remove('./TestDB.db')
 
     def test_get_info_from_few_topics(self):
+        self.skipTest("for now")
         links = [
             "https://pogrywamy.pl/topic/16862-typowanie-01-ekstraklasa-17072022/",
             "https://pogrywamy.pl/topic/16875-typowanie-02-ecl-19072022/",
@@ -381,7 +382,16 @@ class TestFunWithDB(unittest.TestCase):
             with self.SessionFactory() as session:
                 for post in posts:
                     typer = models.Typer(utils.get_post_owner(post), post)
-                    typer.add_bet()
+                    result = session.execute(sa.select(models.Typer)
+                                             .where(models.Typer.name == typer.name)).fetchone()
+                    if not result:
+                        session.add(typer)
+                    else:
+                        typer = result
+                    try:
+                        typer.add_bet()
+                    except:
+                        pdb.set_trace()
                     for event in typer.bet.events:
                         event.sport = 'football'
                     session.add(typer)
@@ -390,3 +400,4 @@ class TestFunWithDB(unittest.TestCase):
                     except Exception as e:
                         pdb.set_trace()
                         print(e)
+                        session.rollback()
