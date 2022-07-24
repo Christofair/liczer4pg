@@ -203,7 +203,7 @@ class TestFeature(unittest.TestCase):
         typers = []
         for post in posts:
             typer = models.Typer(utils.get_post_owner(post), post)
-            typer._load_bet()
+            typer.load_bet()
             typers.append(typer)
         events_to_compare = models.EventParser.get_pattern_events(posts)
         for event in events_to_compare:
@@ -230,7 +230,7 @@ class TestFeature(unittest.TestCase):
         typers = []
         for post in posts:
             typer = models.Typer(utils.get_post_owner(post), post)
-            typer._load_bet()
+            typer.load_bet()
             typers.append(typer)
         events_to_compare = models.EventParser.get_pattern_events(posts)
         for event in events_to_compare:
@@ -255,7 +255,7 @@ class TestFeature(unittest.TestCase):
         typers = []
         for post in posts:
             typer = models.Typer(utils.get_post_owner(post), post)
-            typer._load_bet(events_to_compare)
+            typer.load_bet(events_to_compare)
             typers.append(typer)
         self.assertFalse(not events_to_compare)
         events_to_compare[0].winner = events_to_compare[0].home_team
@@ -298,8 +298,7 @@ class TestDB(unittest.TestCase):
         typers = []
         for post in posts:
             typers.append(models.Typer(utils.get_post_owner(post), post))
-            typers[-1]._load_bet()
-            typers[-1].add_bet()
+            typers[-1].load_bet()
             for event in typers[-1].bet.events:
                 event.sport = 'football'
 
@@ -389,7 +388,7 @@ class TestFunWithDB(unittest.TestCase):
                     else:
                         typer = result
                     try:
-                        typer.add_bet()
+                        typer.load_bet()
                     except:
                         pdb.set_trace()
                     for event in typer.bet.events:

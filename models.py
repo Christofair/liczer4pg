@@ -323,13 +323,15 @@ class Typer(Base):
     name = sa.Column(sa.String(255), index=True, unique=True)
     bets = orm.relationship('Bet', back_populates='typer')
     # posts = orm.relationship('Post', back_populates='typer')
+    @property
+    def bet(self):
+        return self.bets[0]
 
     def __init__(self, name, post):
         self.name = name
         if post is not None:
             self._post = utils.parse_post_if_string(post)
             # self.posts.append(et2str(utils.parse_post_if_string(post)))
-        self.bet = None
 
     def __eq__(self, other):
         return self.name == other.name
@@ -351,24 +353,15 @@ class Typer(Base):
         self._post = utils.parse_post_if_string(value)
         # self.posts.append(Post(typer_id=self.id, post=et2str(self._post)))
 
-    def _load_bet(self, pattern_events=None):
+    def load_bet(self, pattern_events=None):
         if not pattern_events:
-            self.bet = Bet.parse(self.post)
+            bet = Bet.parse(self.post)
         else:
-            self.bet = Bet.parse_winner_type(self.post, pattern_events)
+            bet = Bet.parse_winner_type(self.post, pattern_events)
+        self.bets.append(bet)
 
-    def add_bet(self, bet=None, pattern_events=None):
-        if bet is not None:
-            self.bets.append(bet)
-            self.bet = bet
-        elif self.bet is not None:
-            self.bets.append(self.bet)
-        else:
-            if pattern_events:
-                self._load_bet(pattern_events)
-            else:
-                self._load_bet()
-            self.bets.append(self.bet)
+    def add_bet(self, bet):
+        self.bets.append(bet)
 
     def count_points(self, results_events):
         return sum([bet.count_point(results_events) for bet in self.bets])
