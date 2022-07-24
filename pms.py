@@ -1,3 +1,4 @@
+"""Processing lines from flashscore.mobi to that applied at forum PG"""
 import re
 
 input_path = input('input: ')
