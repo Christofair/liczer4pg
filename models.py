@@ -366,9 +366,6 @@ class Typer(Base):
                 self._load_bet()
             self.bets.append(self.bet)
 
-    def when_written(self):
-        return utils.get_post_timestamp(self.post)
-
     def count_points(self, results_events):
         return sum([bet.count_point(results_events) for bet in self.bets])
 
