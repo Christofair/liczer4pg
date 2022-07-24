@@ -79,6 +79,12 @@ class Event(Base):
             stra.append(f"{self.home_team}\t{self.result}\t{self.away_team}")
         return ''.join(stra)
 
+    def __eq__(self, other):
+        home_cond = self.home_team == other.home_team
+        away_cond = self.away_team == other.away_team
+        # time_cond = self.start_time == other.start_time
+        return home_cond and away_cond
+
     def count_point_scores(self, result_event):
         if self != result_event:
             raise ValueError("These events are different.")
@@ -151,7 +157,6 @@ class Event(Base):
         except Exception as e:
             logger.exception("Error during getting time")
             logger.info(f'parsing line with time was: {thetime_line!r}')
-            raise e from None
         if away_score is None or home_score is None:
             if away_score is not None or home_score is not None:
                 raise ValueError("[PARSER] Line no contain valid result")
@@ -160,8 +165,7 @@ class Event(Base):
         obj = cls()
         obj.home_team = home_name
         obj.away_team = away_name
-        obj.home_score = home_score
-        obj.away_score = away_score
+        obj.result = "-".join([home_score, away_score])
         obj.start_time = start_time
         return obj
 
@@ -211,13 +215,6 @@ class Event(Base):
                         break
                 break  # only one post has `c` pattern in it.
         return pattern_events
-
-
-    def __eq__(self, other):
-        home_cond = self.home_team == other.home_team
-        away_cond = self.away_team == other.away_team
-        # time_cond = self.start_time == other.start_time
-        return home_cond and away_cond
 
 
 class Bet(Base):

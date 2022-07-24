@@ -71,7 +71,7 @@ def get_all_teams_names(events: list["Event"]) -> list[str]:
 def get_timestamp_from_typujemy_line(line, year):
     start_time = datetime(1970,1,1)
     tsr = re.search(
-        r"\(.*typujemy +do +(\d+).(\d+)(?:\.\d{2,4}){0,1} +do +godziny +(\d+):(\d+).*\)",
+        r".*typujemy +do +(\d+).(\d+)(?:\.\d{2,4}){0,1} +do +godziny +(\d+):(\d+).*",
         line.replace('\xa0',' ')
     )
     if tsr:

@@ -346,7 +346,7 @@ class TestDB(unittest.TestCase):
         """If there are bets from different sports then check which one are the best from them."""
         self.skipTest("This test only for me to try feature")
 
-class TestFunWithDB(,unittest.TestCase):
+class TestFunWithDB(unittest.TestCase):
     """Case for learning sqlalchemy more"""
     engine = None
     SessionFactory = None
@@ -374,9 +374,19 @@ class TestFunWithDB(,unittest.TestCase):
             "https://pogrywamy.pl/topic/16895-typowanie-03-ecl-28072022/",
             "https://pogrywamy.pl/topic/16522-typowanie-15-premier-league-19052022/"
         ]
+        import pdb
         for link in links:
             sleep(0.2)
             posts = utils.collect_posts_from_topic(requests.get(link).content.decode('utf-8'))
-            for post in posts:
-                typer = models.Typer(utils.get_post_owner(post), post)
-                typer.add_bet()
+            with self.SessionFactory() as session:
+                for post in posts:
+                    typer = models.Typer(utils.get_post_owner(post), post)
+                    typer.add_bet()
+                    for event in typer.bet.events:
+                        event.sport = 'football'
+                    session.add(typer)
+                    try:
+                        session.commit()
+                    except Exception as e:
+                        pdb.set_trace()
+                        print(e)
