@@ -247,7 +247,7 @@ class TestFeature(unittest.TestCase):
         for i in range(3):
             self.assertEqual(typers[i].bet.count_point(events_to_compare), correct_results[i])
 
-        # ANTOHER TEST WITH DEVISED RESULTS.
+        # ANOTHER TEST WITH DEVISED RESULTS.
         topic_response = requests.get("https://pogrywamy.pl/topic/16860-typowanie-liga-narod%C3%B3w-3-21072022-%C4%87wier%C4%87fina%C5%82y/")
         self.assertFalse(topic_response.status_code != 200)
         posts = utils.collect_posts_from_topic(topic_response.content.decode('utf-8'))
