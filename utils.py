@@ -5,6 +5,7 @@ import re
 from datetime import datetime
 import pytz
 
+import errors
 
 def parse_post_if_string(post) -> html.HtmlElement:
     if isinstance(post, str):
@@ -78,7 +79,7 @@ def get_timestamp_from_typujemy_line(line, year):
         start_time = datetime(year, int(tsr.group(2)), int(tsr.group(1)), int(tsr.group(3)),
                             int(tsr.group(4)))
     else:
-        raise ValueError("Pattern event doesn't have time line")
+        raise errors.NotTimeLine("Pattern event doesn't have time line")
     return start_time
 
 def normalize_name(word: str):

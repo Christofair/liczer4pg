@@ -1,10 +1,12 @@
 """Models are classes on which we operate in python code, and store persistent state in db"""
 
+from copy import deepcopy
 import re
 from datetime import date, datetime
 from lxml import html
 from lxml.etree import tostring as et2str
 import utils
+import errors
 
 # imports for do database
 import sqlalchemy as sa
@@ -115,6 +117,7 @@ class Event(Base):
                 or (self.home_score < self.away_score
                     and result_event.home_score < result_event.away_score))
 
+
 class EventParser:
     """Parser for events from users' posts"""
 
@@ -123,62 +126,43 @@ class EventParser:
         self.base_date = ref_date
 
     def parse_winner_type(self, line):
-        sb = len(line)
-        start_time = self.base_date
-        try:
-            sb = line.index('(')
-            thetime_line = line[sb:]
-            start_time = utils.get_timestamp_from_typujemy_line(thetime_line, self.base_date.year)
-        except ValueError:
-            try: sb = line.index('\xa0')
-            except: pass
-        if self.pattern is None:
-            ValueError("During parsing winner type event there was not pattern events in parser")
-        good_pattern_event = [event for event in self.pattern
-                              if event.home_team in line or event.away_team in line][0]
-        return Event(
-            start_time=start_time,
-            home_team=good_pattern_event.home_team,
-            away_team=good_pattern_event.away_team,
-            home_score=0,
-            away_score=0,
-            winner=line[:sb].strip()
-        )
+        valid_event = [event for event in deepcopy(self.pattern)
+                       if event.home_team in line or event.away_team in line][0]
+        # Check if that line was valid as event
+        if not valid_event:
+            raise errors.NotEventLine("That line %s can't be parsed as event line" % (line,))
+        # Shortcuts for names
+        home, away = valid_event.home_team, valid_event.away_team
+        # Checking winner by finding name in line
+        valid_event.winner = home if home in line else away
+        # Return that event
+        return valid_event
 
     def parse(self, line):
         """Load event from line"""
-        pattern = r'(\d+).*-.*(\d+)'
-        start_of_braces = line.index('(')
-        processed_line = line[:start_of_braces]
-        splitted_line = re.split(pattern, processed_line, maxsplit=1)
-        if len(splitted_line) < 2:
-            raise ValueError("[EVENT PARSER] The line was wrong formatted")
-        home_name, home_score, away_score, away_name = splitted_line
-        home_name = home_name.replace('\xa0',' ').strip()
-        away_name = away_name.replace('\xa0',' ').strip()
-        thetime_line = line[start_of_braces:]
-        try:
-            start_time = utils.get_timestamp_from_typujemy_line(thetime_line, self.base_date.year)
-        except Exception as e:
-            logger.exception("Error during getting time")
-            logger.info(f'parsing line with time was: {thetime_line!r}')
-            start_time = self.base_date
-        if away_score is None or home_score is None:
-            if away_score is not None or home_score is not None:
-                raise ValueError("[PARSER] Line no contain valid result")
-        if not home_name or not away_name:
-            raise ValueError("[PARSER] Event has no names for teams")
-        return Event(
-            home_team = home_name,
-            away_team = away_name,
-            start_time = start_time,
-            result = "-".join([home_score, away_score])
-        )
-    
+        # Find event matching in this line, and operate on deepcopy of events from patterns
+        single_valid_event = [event for event in deepcopy(self.pattern)
+                              if event.home_team in line and event.away_team in line][0]
+        # Check if that line was valid as event
+        if not single_valid_event:
+            raise errors.NotEventLine("That line %s can't be parsed as event line" % (line,))
+        # Group results ints
+        home, away = single_valid_event.home_team, single_valid_event.away_team
+        pattern = rf'{home}.*(\d+).*-.*(\d+).*{away}'
+        # Search pattern in line
+        matching = re.search(pattern, line)
+        # Enter the result to that event
+        single_valid_event.result = '-'.join([matching.group(1), matching.group(2)])
+        # Return it.
+        return single_valid_event
+
     @staticmethod
     def _parse_pattern_event(line, year):
         """Load pattern event from line"""
-        start_of_braces = line.index('(')
+        try:
+            start_of_braces = line.index('(')
+        except ValueError:
+            raise errors.NotTimeLine from None
         processed_line = line[:start_of_braces]
         thetime_line = line[start_of_braces:]
         start_time = utils.get_timestamp_from_typujemy_line(thetime_line, year)
@@ -190,6 +174,7 @@ class EventParser:
             away_team = away,
             home_score = 0,
             away_score = 0,
+            winner = None,
             start_time = start_time
         )
 
@@ -207,10 +192,9 @@ class EventParser:
                 for i in range(lines.index(flist[0].string), len(lines)):
                     try:
                         pattern_events.append(EventParser._parse_pattern_event(lines[i], post_year))
-                    except ValueError as e:
-                        # only logging, that there was an exception 
+                    except errors.NotTimeLine:
                         # Never silently pass an exception.
-                        logger.info(e)
+                        logger.exception("Cannot find time line in pattern??")
                     except Exception as e:
                         logger.exception(e)
                     if re.search(r"[Mm]oje [tT]ypy[:]", lines[i]) or lines[i] == '\xa0':
@@ -254,25 +238,20 @@ class Bet(Base):
         if len(lines) > 0:
             bet = cls()
             try:
-                for line in lines:
-                    ref_event = [event for event in pattern_events
-                                if event.home_team in line or event.away_team in line][0]
-                    event = parser.parse_winner_type(line)
-                    bet.events.append(event)
+                bet.events = [parser.parse_winner_type(line) for line in lines]
             except ValueError as e:
                 logger.error(e)
         return bet
 
-
     # in that method get single post as in article tag
     @classmethod
-    def parse(cls, post) -> "Bet":
+    def parse(cls, post, pattern_events) -> "Bet":
         if isinstance(post, str):
             post_root = html.fragment_fromstring(post)
         else:
             post_root = post
         post_date = utils.get_post_timestamp(post)
-        parser = EventParser(ref_date=post_date)
+        parser = EventParser(ref_date=post_date, ref_events=pattern_events)
         comment_content = post_root.cssselect('.cPost_contentWrap')[0]
         lines = comment_content.text_content().splitlines()
         pattern = r'.+.*\d.*-.*\d.*(?:\(typujemy.*){0,1}'
@@ -283,6 +262,7 @@ class Bet(Base):
             events = [parser.parse(line) for line in lines]
         except ValueError as e:
             logger.error(e)
+            raise e
         obj = cls()
         obj.events = events
         return obj
@@ -300,12 +280,12 @@ class Bet(Base):
             ValueError("Function to counting points is not known")
         if len(good_events_list) != len(self.events):
             ValueError("good_events_list and self.events have different sizes")
-        if good_events_list:
-            return sum([[counting_function(event, good_event)
-                        for good_event in good_events_list
-                            if event.home_team == good_event.home_team][0]
-                        for event in self.events])
-        raise ValueError("good event list was empty")
+        if not good_events_list:
+            raise ValueError("good event list was empty")
+        return sum([[counting_function(event, good_event)
+                    for good_event in good_events_list
+                        if event.home_team == good_event.home_team][0]
+                    for event in self.events])
 
 
 # Class for collect posts of typers, but I dont want to collect them at first
@@ -323,9 +303,13 @@ class Typer(Base):
     name = sa.Column(sa.String(255), index=True, unique=True)
     bets = orm.relationship('Bet', back_populates='typer')
     # posts = orm.relationship('Post', back_populates='typer')
+
+
     @property
     def bet(self):
-        return self.bets[0]
+        bet = self.bets.pop()
+        self.bets.append(bet)
+        return bet
 
     def __init__(self, name, post):
         self.name = name
@@ -353,9 +337,9 @@ class Typer(Base):
         self._post = utils.parse_post_if_string(value)
         # self.posts.append(Post(typer_id=self.id, post=et2str(self._post)))
 
-    def load_bet(self, pattern_events=None):
-        if not pattern_events:
-            bet = Bet.parse(self.post)
+    def load_bet(self, pattern_events, winner_type):
+        if not winner_type:
+            bet = Bet.parse(self.post, pattern_events)
         else:
             bet = Bet.parse_winner_type(self.post, pattern_events)
         self.bets.append(bet)

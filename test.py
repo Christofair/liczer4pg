@@ -132,7 +132,7 @@ class TestModels(unittest.TestCase):
             _create_event("Levante", "Barcelona", "0-2"),
             _create_event("Rayo Vallecano", "Valencia", "0-2")
         ]
-        nicekovsky_bet = models.Bet.parse(post)
+        nicekovsky_bet = models.Bet.parse(post, nicekovsky_bet_test_data.events)
         for event_test_data in nicekovsky_bet_test_data.events:
             event = nicekovsky_bet.events.pop(0)
             self.assertEqual(event_test_data.home_team, event.home_team)
@@ -153,7 +153,8 @@ class TestModels(unittest.TestCase):
             _create_event("Levante", "Barcelona","1-2"),
             _create_event("Rayo Vallecano",  "Valencia","0-1")
         ]
-        idob_bet = models.Bet.parse(post)
+        # writing originals as pattern is some kind of non-sens, but not exactly xd
+        idob_bet = models.Bet.parse(post, idob_bet_test_data.events)
         for event_test_data in idob_bet_test_data.events:
             event = idob_bet.events.pop(0)
             self.assertEqual(event_test_data.home_team, event.home_team)
@@ -200,10 +201,11 @@ class TestFeature(unittest.TestCase):
         # build doc tree through html parser
         # topic = Topic(topic_response.url)
         posts = utils.collect_posts_from_topic(topic_response.content.decode('utf-8'))
+        valid_events = models.EventParser.get_pattern_events(posts)
         typers = []
         for post in posts:
             typer = models.Typer(utils.get_post_owner(post), post)
-            typer.load_bet()
+            typer.load_bet(valid_events, False)
             typers.append(typer)
         events_to_compare = models.EventParser.get_pattern_events(posts)
         for event in events_to_compare:
@@ -227,10 +229,11 @@ class TestFeature(unittest.TestCase):
         topic_response = requests.get("https://pogrywamy.pl/topic/16860-typowanie-liga-narod%C3%B3w-3-21072022-%C4%87wier%C4%87fina%C5%82y/")
         self.assertFalse(topic_response.status_code != 200)
         posts = utils.collect_posts_from_topic(topic_response.content.decode('utf-8'))
+        valid_events = models.EventParser.get_pattern_events(posts)
         typers = []
         for post in posts:
             typer = models.Typer(utils.get_post_owner(post), post)
-            typer.load_bet()
+            typer.load_bet(valid_events)
             typers.append(typer)
         events_to_compare = models.EventParser.get_pattern_events(posts)
         for event in events_to_compare:
@@ -246,7 +249,7 @@ class TestFeature(unittest.TestCase):
         for i in range(len(typers)):
             self.assertEqual(typers[i].bet.count_point(events_to_compare), correct_results[i])
 
-    def test_counting_points_with_winner_type(self):
+    def test_counting_points_winner_type(self):
         """Check if counted points are correctly sum up."""
         response = requests.get("https://pogrywamy.pl/topic/16874-typowanie-1-mlb-21072022/#comment-86877")
         self.assertFalse(response.status_code != 200)
@@ -255,7 +258,7 @@ class TestFeature(unittest.TestCase):
         typers = []
         for post in posts:
             typer = models.Typer(utils.get_post_owner(post), post)
-            typer.load_bet(events_to_compare)
+            typer.load_bet(events_to_compare, True)
             typers.append(typer)
         self.assertFalse(not events_to_compare)
         events_to_compare[0].winner = events_to_compare[0].home_team
@@ -295,10 +298,11 @@ class TestDB(unittest.TestCase):
         with open('./index.html', encoding='utf-8') as topic:
             posts = utils.collect_posts_from_topic(topic.read())
         self.assertTrue(len(posts) > 0)
+        valid_events = models.EventParser.get_pattern_events(posts)
         typers = []
         for post in posts:
             typers.append(models.Typer(utils.get_post_owner(post), post))
-            typers[-1].load_bet()
+            typers[-1].load_bet(valid_events, False)
             for event in typers[-1].bet.events:
                 event.sport = 'football'
 
@@ -378,25 +382,29 @@ class TestFunWithDB(unittest.TestCase):
         for link in links:
             sleep(0.2)
             posts = utils.collect_posts_from_topic(requests.get(link).content.decode('utf-8'))
+            valid_events = models.EventParser.get_pattern_events(posts)
             with self.SessionFactory() as session:
                 for post in posts:
                     typer = models.Typer(utils.get_post_owner(post), post)
-                    result = session.execute(sa.select(models.Typer)
-                                             .where(models.Typer.name == typer.name)).fetchone()
-                    if not result:
-                        session.add(typer)
-                    else:
-                        typer = result
-                    try:
-                        typer.load_bet()
-                    except:
-                        pdb.set_trace()
-                    for event in typer.bet.events:
-                        event.sport = 'football'
-                    session.add(typer)
-                    try:
-                        session.commit()
-                    except Exception as e:
-                        pdb.set_trace()
-                        print(e)
-                        session.rollback()
+                    typer.load_bet(valid_events, False)
+                    print(typer)
+                    print(typer.bet)
+                    # result = session.execute(sa.select(models.Typer)
+                    #                          .where(models.Typer.name == typer.name)).fetchone()
+                    # if not result:
+                    #     session.add(typer)
+                    # else:
+                    #     typer = result
+                    # try:
+                    #     typer.load_bet(param1, param2)
+                    # except:
+                    #     pdb.set_trace()
+                    # for event in typer.bet.events:
+                    #     event.sport = 'football'
+                    # session.add(typer)
+                    # try:
+                    #     session.commit()
+                    # except Exception as e:
+                    #     pdb.set_trace()
+                    #     print(e)
+                    #     session.rollback()
