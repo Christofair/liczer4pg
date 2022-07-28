@@ -184,6 +184,28 @@ class TestModels(unittest.TestCase):
         )
         self.assertEqual(t.name, "16702-typowanie-02-k-league-1-22062022")
 
+    def test_statefull_parser(self):
+        """Check if customs words in typers' posts are corectly parsed."""
+        sleep(0.2)
+        # 1. Link of topic, in which there is HOME - AWAY Postponed.
+        response = requests.get("https://pogrywamy.pl/topic/16862-typowanie-01-ekstraklasa-17072022/#comment-87085")
+
+        posts = utils.collect_posts_from_topic(response.content.decode('utf-8'))
+        p_events = models.EventParser.get_pattern_events(posts)
+        events_tests_data = [
+            _create_event("Warta Poznań", "Wisła Płock", "0-0"),
+            _create_event("Jagiellonia Białystok", "Widzew Łódź", "0-0"),
+            _create_event("KS Cracovia", "MKS Korona Kielce", "0-0"),
+            _create_event("Legia Warszawa", "Zagłębie Lubin", "0-0"),
+            _create_event("Miedź Legnica", "Lech Poznań", "0-0"),
+            # _create_event("Piast Gliwice", "Raków Częstochowa" Postponed,
+            _create_event("Śląsk Wrocław", "Pogoń Szczecin", "0-0"),
+            _create_event("KS Lechia Gdańsk", "Górnik Zabrze", "0-0"),
+            _create_event("Stal Mielec", "Radomiak Radom", "0-0")
+        ]
+        for i in range(len(p_events)):
+            self.assertEqual(p_events[i], events_tests_data[i])
+
 
 class TestFeature(unittest.TestCase):
 
@@ -371,14 +393,14 @@ class TestFunWithDB(unittest.TestCase):
             os.remove('./TestDB.db')
 
     def test_get_info_from_few_topics(self):
-        self.skipTest("for now")
+        """To test: uncomment last 2 lines and check DB manually."""
         links = [
             "https://pogrywamy.pl/topic/16862-typowanie-01-ekstraklasa-17072022/",
             "https://pogrywamy.pl/topic/16875-typowanie-02-ecl-19072022/",
             "https://pogrywamy.pl/topic/16895-typowanie-03-ecl-28072022/",
-            "https://pogrywamy.pl/topic/16522-typowanie-15-premier-league-19052022/"
+            # "https://pogrywamy.pl/topic/16522-typowanie-15-premier-league-19052022/"
+            # Last link doesn't work, because Daro, who write topic has no "typer" rank anymore.
         ]
-        import pdb
         for link in links:
             sleep(0.2)
             posts = utils.collect_posts_from_topic(requests.get(link).content.decode('utf-8'))
@@ -386,25 +408,25 @@ class TestFunWithDB(unittest.TestCase):
             with self.SessionFactory() as session:
                 for post in posts:
                     typer = models.Typer(utils.get_post_owner(post), post)
+                    result = session.execute(sa.select(models.Typer)
+                                             .where(models.Typer.name == typer.name)).fetchone()
+                    if not result:
+                        session.add(typer)
+                    else:
+                        typer = result.Typer
+                        typer.post = post  # dodanie postu do typera z bazy
                     typer.load_bet(valid_events, False)
-                    print(typer)
-                    print(typer.bet)
-                    # result = session.execute(sa.select(models.Typer)
-                    #                          .where(models.Typer.name == typer.name)).fetchone()
-                    # if not result:
-                    #     session.add(typer)
-                    # else:
-                    #     typer = result
-                    # try:
-                    #     typer.load_bet(param1, param2)
-                    # except:
-                    #     pdb.set_trace()
-                    # for event in typer.bet.events:
-                    #     event.sport = 'football'
-                    # session.add(typer)
-                    # try:
-                    #     session.commit()
-                    # except Exception as e:
-                    #     pdb.set_trace()
-                    #     print(e)
-                    #     session.rollback()
+                    try:
+                        for event in typer.bet.events:
+                            event.sport = 'football'
+                    except AttributeError:
+                        print('there was no bet')
+                    session.add(typer)
+                    try:
+                        session.commit()
+                    except Exception as e:
+                        pdb.set_trace()
+                        print(e)
+                        session.rollback()
+        # import pdb
+        # pdb.set_trace()

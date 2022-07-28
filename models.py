@@ -195,6 +195,8 @@ class EventParser:
                     except errors.NotTimeLine:
                         # Never silently pass an exception.
                         logger.exception("Cannot find time line in pattern??")
+                        # If in pattern there can't find line with time,
+                        # then the event won't be counted
                     except Exception as e:
                         logger.exception(e)
                     if re.search(r"[Mm]oje [tT]ypy[:]", lines[i]) or lines[i] == '\xa0':
@@ -307,8 +309,12 @@ class Typer(Base):
 
     @property
     def bet(self):
-        bet = self.bets.pop()
-        self.bets.append(bet)
+        try:
+            bet = self.bets.pop()
+        except IndexError:
+            bet = None
+        else:
+            self.bets.append(bet)
         return bet
 
     def __init__(self, name, post):
