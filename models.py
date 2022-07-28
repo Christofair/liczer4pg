@@ -133,6 +133,8 @@ class EventParser:
             raise errors.NotEventLine("That line %s can't be parsed as event line" % (line,))
         # Shortcuts for names
         home, away = valid_event.home_team, valid_event.away_team
+        if home in line and away in line:
+            raise errors.NotEventLine("There not choice of winner in line %s" % (line,))
         # Checking winner by finding name in line
         valid_event.winner = home if home in line else away
         # Return that event
@@ -239,10 +241,15 @@ class Bet(Base):
             lambda l: any([names[i] in l for i in range(len(names))]) and '-' not in l, lines))
         if len(lines) > 0:
             bet = cls()
-            try:
-                bet.events = [parser.parse_winner_type(line) for line in lines]
-            except ValueError as e:
-                logger.error(e)
+            bet.events = []
+            for line in lines:
+                try:
+                    bet.events.append(parser.parse_winner_type(line))
+                # bet.events = [parser.parse_winner_type(line) for line in lines]
+                except errors.NotEventLine:
+                    logger.info("line %s was omitted as invalid" % (line,))
+                except ValueError as e:
+                    logger.error(e)
         return bet
 
     # in that method get single post as in article tag
@@ -260,14 +267,17 @@ class Bet(Base):
         c = re.compile(pattern)
         lines = filter(c.search, lines)
         lines = [l.replace('\xa0',' ') for l in lines]
-        try:
-            events = [parser.parse(line) for line in lines]
-        except ValueError as e:
-            logger.error(e)
-            raise e
-        obj = cls()
-        obj.events = events
-        return obj
+        events = []
+        for line in lines:
+            try:
+                events.append(parser.parse(line))
+            except errors.NotEventLine:
+                logger.info("line %s was omitted as invalid" % (line,))
+            except ValueError as e:
+                logger.error(e)
+        bet = cls()
+        bet.events = events
+        return bet
 
     def count_point(self, good_events_list, kind='scores'):
         """Count point for event if events are equal and the result is correct in some way"""
