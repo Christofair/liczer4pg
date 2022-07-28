@@ -74,3 +74,18 @@ class DBManager:
             return self.session_maker()
         else:
             raise ValueError("DB was not initialized well")
+
+    def get_typer_list(self):
+        """Retrieve typers names from database"""
+        stmt = select(models.Typer.name)
+        with self.session() as session:
+            result = session.execute(stmt)
+        return result
+
+    def get_bet_typer_name(self):
+        """Get bets with typername and topicname"""
+        stmt = select(models.Bet).join(models.Topic.name, models.Topic.sport,
+                                       models.Typer.name)
+        with self.session() as session:
+            result = session.execute(stmt)
+        return result

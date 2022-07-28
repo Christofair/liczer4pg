@@ -392,7 +392,8 @@ class TestFunWithDB(unittest.TestCase):
             os.remove('./TestDB.db')
 
     def test_get_info_from_few_topics(self):
-        """To test: uncomment last 2 lines and check DB manually."""
+        """To test: uncomment last 2 lines and check DB manually.
+        May be used to others queries"""
         links = [
             "https://pogrywamy.pl/topic/16862-typowanie-01-ekstraklasa-17072022/",
             "https://pogrywamy.pl/topic/16875-typowanie-02-ecl-19072022/",
