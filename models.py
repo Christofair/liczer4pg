@@ -214,6 +214,7 @@ class Bet(Base):
     typer_id = sa.Column(sa.Integer, sa.ForeignKey('typers.id'))
     typer = orm.relationship('Typer', back_populates='bets')
     topic_link = sa.Column(sa.String(255), sa.ForeignKey('topics.link'))
+    topic = orm.relationship('Topic', back_populates='bets')
 
     def __init__(self):
         self.events = []
@@ -376,7 +377,10 @@ class Topic(Base):
     last_event_end = sa.Column(sa.DateTime)
     sport = sa.Column(sa.String(128))
     # tournament = sa.Column(sa.String(128), nullable=False)
-    bets = orm.relationship('Bet')
+    bets = orm.relationship('Bet', back_populates='topic')
+
+    def __repr__(self):
+        return "[%s]|%s|%s" % ("OPEN" if self.is_open else "CLOSE", self.link, self.sport)
 
     def __init__(self, link, name=""):
         self.is_open = True
