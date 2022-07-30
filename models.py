@@ -364,8 +364,13 @@ class Typer(Base):
     def add_bet(self, bet):
         self.bets.append(bet)
 
-    def count_points(self, results_events):
-        return sum([bet.count_point(results_events) for bet in self.bets])
+    def count_points_from_bets(self):
+        """Count all points from events from bets. Count only from these bets, which was loaded."""
+        total = 0
+        for bet in self.bets:
+            summ = sum([event.points for event in bet.events])
+            total += summ
+        return total
 
 
 class Topic(Base):
