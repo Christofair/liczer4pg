@@ -35,6 +35,17 @@ class Event(Base):
     points = sa.Column(sa.Integer, default=0, nullable=False)
     sport = sa.Column(sa.String(128), nullable=False)
 
+    def as_dict(self):
+        """Return event object as basic type dict"""
+        return {
+            "start_time": self.start_time,
+            "home_team": self.home_team,
+            "away_team": self.away_team,
+            "home_score": self.home_score,
+            "away_score": self.away_score,
+            "winner": self.winner if self.winner is not None else ""
+        }
+
     def set_score(self, value):
         """Setting score for event. If there is winner type of bet, then
         value 1 for home_team or away_team specifies that winner."""

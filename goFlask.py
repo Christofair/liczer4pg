@@ -5,6 +5,8 @@ import models
 import utils
 import sqlalchemy as sa
 from datetime import datetime
+import requests;
+import json
 
 app = Flask('typerka_pg_api')
 CORS(app)
@@ -16,14 +18,10 @@ def get_db():
 
 @app.get('/')
 def index():
-    with get_db().session() as session:
-        typers = session.query(models.Typer).join(models.Bet).join(models.Event)
-        lista = list(map(str, typers[0].bets))
-        # lista = list(map(str, typers))
-    # lista = [(typer.name,
-     #          sum([sum([event.points for event in bet.events]) for bet in typer.bets])) for typer in typers]
+    result = get_db().get_bets_typer_by_month(datetime(2022, 7, 1)).all()
+    print(result)
+    return jsonify(result)
 
-    return jsonify(lista)
 
 @app.route('/api/v1/top/month/<int:month>/<int:year>', methods=['GET', 'POST'])
 def top_month(month, year):
@@ -40,7 +38,7 @@ def top_month(month, year):
                                  .where(models.Event.start_time < datetime(year, month+1, 1)))
                                  #        and models.Event.start_time >= datetime(year, month, 1))
                                  # .limit(how_many_typers)).all()
-        top = [{'name':typer[0].name, 'points':typer[0].count_point() for typer in typers]
+        top = [{'name':typer[0].name, 'points':typer[0].count_point()} for typer in typers]
 
     return jsonify(top)
 
@@ -49,4 +47,14 @@ def top_dw():
     """Generate json which contain top 5"""
     raise NotImplemented()
 
-# @app.route('/api/v1/')
+@app.route('/api/v1/forum/pattern', methods=['POST'])
+def send_pattern():
+    # loads json from string (decoded data to utf-8) 
+    # then get field value under "link" key
+    link = json.loads(request.data.decode('utf-8'))['link']
+    # do request to that link
+    # TODO: validate string for forum domain.
+    response = requests.get(link)
+    posts = utils.collect_posts_from_topic(response.content.decode('utf-8'))
+    events = models.EventParser.get_pattern_events(posts)
+    return jsonify([event.as_dict() for event in events])

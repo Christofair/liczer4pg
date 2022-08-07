@@ -2,6 +2,7 @@
 import sqlalchemy as sa
 import models
 import sys, os
+from datetime import datetime
 
 
 if __name__ == '__main__':
@@ -56,7 +57,8 @@ class DBManager:
         except OSError:
             print("Opening config file failed.")
             self.db_ready = False
-        engine = sa.create_engine(f"mysql+pymysql://{login}:{password}@localhost/TyperkaPG")
+        # engine = sa.create_engine(f"mysql+pymysql://{login}:{password}@localhost/TyperkaPG")
+        engine = sa.create_engine("sqlite:///ddd.db")
         self.db_ready = True
         self.session_maker = sa.orm.sessionmaker(bind=engine)
 
@@ -65,6 +67,10 @@ class DBManager:
             return self.session_maker()
         else:
             raise ValueError("DB was not initialized well")
+
+    def get_years_from_events(self):
+        """Collect distinct years from events"""
+        stmt = sa.select(models.Event.start_time.year).distinct
 
     def get_all_typers_names(self):
         """Retrieve typers names from database"""
@@ -86,3 +92,14 @@ class DBManager:
         with self.session() as session:
             result = session.execute(stmt)
         return result
+
+    def get_bets_typer_by_month(self, date: datetime):
+        """Get typer and his bets from month"""
+        # stmt = (sa.select(models.Typer, models.Typer.bets, models.Bet.events)
+        #         .join(models.Event.bet).join(models.Bet.typer)
+        #         .where(models.Event.start_time.month == date.month)
+        #         .where(models.Event.start_time.year == date.year))
+        # stmt = (sa.select(models.Typer).where(models.Typer.name.like('%sto%')))
+        # with self.session() as session:
+        #     result = session.execute(stmt)
+        # return result
