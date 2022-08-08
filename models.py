@@ -43,7 +43,7 @@ class Event(Base):
             "away_team": self.away_team,
             "home_score": self.home_score,
             "away_score": self.away_score,
-            "winner": self.winner if self.winner is not None else ""
+            "winner": self.winner if self.winner is not None and self.winner != "" else None
         }
 
     @classmethod
@@ -68,8 +68,8 @@ class Event(Base):
             self.away_score = 0
             self.winner = None
         elif '-' in value:
-            self.home_score = value.split('-')[0]
-            self.away_score = value.split('-')[1]
+            self.home_score = int(value.split('-')[0])
+            self.away_score = int(value.split('-')[1])
             if self.home_score > self.away_score:
                 self.winner = self.home_team
             elif self.home_score < self.away_score:
@@ -99,7 +99,7 @@ class Event(Base):
         stra = []
         if self.start_time:
             stra.append(f"\nStart at {self.start_time.ctime()}\n")
-        if self.winner is not None and self.result == "0-0":
+        if self.winner is not None and self.winner != "":
             stra.append(f"{self.home_team}\tVS\t{self.away_team}")
             stra.append(f"\n[WINNER]\t{self.winner}")
         else:
