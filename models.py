@@ -38,13 +38,27 @@ class Event(Base):
     def as_dict(self):
         """Return event object as basic type dict"""
         return {
-            "start_time": self.start_time,
+            "start_time": self.start_time.timestamp(),
             "home_team": self.home_team,
             "away_team": self.away_team,
             "home_score": self.home_score,
             "away_score": self.away_score,
             "winner": self.winner if self.winner is not None else ""
         }
+
+    @classmethod
+    def from_dict(cls, d):
+        hs = d.get('home_score')
+        _as = d.get('away_score')
+        ht = d.get('home_team')
+        at = d.get('away_team')
+        win = d.get('winner')
+        if ((hs is None or hs == "" ) and (_as is None or _as == "")) and (
+            win is None or win == ""):
+            raise ValueError("Can't create object from this dict")
+        if hs == "" or _as == "" or hs is None or _as is None:
+            raise ValueError("The names of team in event was empty or None")
+        return cls(home_score=hs, away_score=_as, home_team=ht, away_team=at, winner=win)
 
     def set_score(self, value):
         """Setting score for event. If there is winner type of bet, then
@@ -201,7 +215,8 @@ class EventParser:
             lines = list(
                 filter(None, post.cssselect('.cPost_contentWrap')[0].text_content().splitlines()))
             flist = [c.search(l) for l in lines if c.search(l) is not None]
-            if flist and 'typer' in utils.get_post_owner(post, True)[1]:
+            rangs = utils.get_post_owner(post, True)[1]
+            if flist and ('typer' in rangs or 'zasłużony' in rangs):
                 for i in range(lines.index(flist[0].string), len(lines)):
                     try:
                         pattern_events.append(EventParser._parse_pattern_event(lines[i], post_year))
@@ -298,6 +313,7 @@ class Bet(Base):
         # checking equality has to be in first list comprehension, because undefined of variable
         if kind == 'scores':
             counting_function = lambda x, y: x.count_point_scores(y)
+        # TODO: try change winner to winners
         elif kind == 'winner':
             counting_function = lambda x, y: x.count_point_winner(y)
         else:
@@ -308,7 +324,7 @@ class Bet(Base):
             raise ValueError("good event list was empty")
         return sum([[counting_function(event, good_event)
                     for good_event in good_events_list
-                        if event.home_team == good_event.home_team][0]
+                        if event == good_event][0]
                     for event in self.events])
 
 
