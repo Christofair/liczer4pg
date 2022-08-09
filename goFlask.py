@@ -78,8 +78,7 @@ def counting_points():
     except KeyError as e:
         print(e)
         raise e;
-    # winner_type = good_events[0].winner is not None and good_events[0].winner != ""
-    winner_type = False
+    winner_type = good_events[0].winner is not None and good_events[0].winner != ""
     kind = 'scores' if not winner_type else 'winner'
     posts = None
     cache = get_posts_cache()
