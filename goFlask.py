@@ -8,6 +8,8 @@ from datetime import datetime
 import requests;
 import json
 
+import formatting_parsers as parsers
+
 app = Flask('typerka_pg_api')
 CORS(app)
 
@@ -99,3 +101,22 @@ def counting_points():
     for i in range(len(typers)):
         results_data.update({typers[i].name: typers[i].bet.count_point(good_events, kind)})
     return jsonify(results_data)
+
+@app.route('/api/v1/forum/convertion', methods=['POST'])
+def rendered_pattern():
+    try:
+        data = json.loads(request.data.decode('utf-8'))
+        matches = data['matches']
+        format = data['format']
+        dt = data.get('date')
+    except KeyError as e:
+        print(e)
+        raise e;
+    # type {home, away, event_time: datetime}
+    objects = []
+    if format.lower() == 'sofascore':
+        objects = parsers.parse_sofa_format(matches)
+    elif format.lower() == 'flashscore':
+        # XXX THIS CAN RAISE AN EXCEPTION. - when dt will be None.
+        objects = parsers.parse_flash_format(matches, datetime.fromisoformat(dt))
+    return jsonify(objects)
