@@ -97,9 +97,12 @@ def counting_points():
             typers.append(typer)
         except Exception as e:
             print(e)
-    results_data = {}
+    results_data = []
     for i in range(len(typers)):
-        results_data.update({typers[i].name: typers[i].bet.count_point(good_events, kind)})
+        results_data.append({
+            'name': typers[i].name,
+            'points': typers[i].bet.count_point(good_events, kind)
+        })
     return jsonify(results_data)
 
 @app.route('/api/v1/forum/convertion', methods=['POST'])
