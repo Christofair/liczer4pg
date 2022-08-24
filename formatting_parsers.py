@@ -13,7 +13,7 @@ def parse_sofa_format(content: str):
             obiekt = {}
             state='data'
         elif state == 'data':
-            data = re.match(r'(\d+)/(\d+)/(\d+)', line)
+            data = re.match(r'(\d+)[-/.](\d+)[-/.](\d+)', line)
             if 'event_time' not in obiekt:
                 obiekt['event_time'] = {}
             obiekt['event_time'].update({
