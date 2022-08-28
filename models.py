@@ -228,7 +228,7 @@ class EventParser:
                         # then the event won't be counted
                     except Exception as e:
                         logger.exception(e)
-                    if re.search(r"[Mm]oje [tT]ypy[:]", lines[i]) or lines[i] == '\xa0':
+                    if re.search(r"[Mm]oje [tT]ypy[:]", lines[i]):
                         break
                 break  # only one post has `c` pattern in it.
         return pattern_events
