@@ -169,10 +169,11 @@ class EventParser:
         """Load event from line"""
         # Find event matching in this line, and operate on deepcopy of events from patterns
         single_valid_event = [event for event in deepcopy(self.pattern)
-                              if event.home_team in line and event.away_team in line][0]
+                            if event.home_team in line and event.away_team in line]
         # Check if that line was valid as event
         if not single_valid_event:
             raise errors.NotEventLine("That line %s can't be parsed as event line" % (line,))
+        single_valid_event = single_valid_event[0]
         # Group results ints
         home, away = single_valid_event.home_team, single_valid_event.away_team
         pattern = rf'{home}.*(\d+).*-.*(\d+).*{away}'
@@ -193,7 +194,7 @@ class EventParser:
         processed_line = line[:start_of_braces]
         thetime_line = line[start_of_braces:]
         start_time = utils.get_timestamp_from_typujemy_line(thetime_line, year)
-        home, away = processed_line.split('-')
+        home, away = processed_line.split(' - ')
         home = home.replace('\xa0',' ').strip()
         away = away.replace('\xa0',' ').strip()
         return Event(
@@ -290,7 +291,15 @@ class Bet(Base):
         parser = EventParser(ref_date=post_date, ref_events=pattern_events)
         comment_content = post_root.cssselect('.cPost_contentWrap')[0]
         lines = comment_content.text_content().splitlines()
-        pattern = r'.+.*\d.*-.*\d.*(?:\(typujemy.*){0,1}'
+        rangs = utils.get_post_owner(post, True)[1]
+        if "typer" in rangs or "zasłużony" in rangs:
+            try:
+                line = [l for l in lines if re.search(r'[Mm]oje [Tt]ypy[:]', l)][0]
+                lines = lines[lines.index(line):]
+            except Exception as e:
+                print("Topic author doesn't include own bet")
+                print(e)
+        pattern = r'.+\d.*-.*\d.+(?:\(typujemy.*){0,1}'
         c = re.compile(pattern)
         lines = filter(c.search, lines)
         lines = [l.replace('\xa0',' ') for l in lines]
