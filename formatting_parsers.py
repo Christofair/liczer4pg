@@ -1,40 +1,50 @@
 """sofa_pms contain parse function, which can parse matches data copied from sofa."""
 import re
 from datetime import datetime as dt
+from copy import deepcopy
 
 def parse_sofa_format(content: str):
     """Return list of match objects."""
+    td = dt.today()
+    # initial object specifies an interface too
+    initial_object = {
+        'event_time':{'hour': -1, 'minute': -1, 'day': td.day, 'month': td.month, 'year': td.year},
+        'home': None,
+        'away': None
+    }
+    obiekt = deepcopy(initial_object)
     obiekty = []
-    obiekt = {}
-    state = 'data'
     for line in content.splitlines():
-        if state == 'nowy obiekt':
-            obiekty.append(obiekt)
-            obiekt = {}
-            state='data'
-        elif state == 'data':
-            data = re.match(r'(\d+)[-/.](\d+)[-/.](\d+)', line)
-            if 'event_time' not in obiekt:
-                obiekt['event_time'] = {}
+        if line.strip() == '':
+            if (obiekt['home'] is not None and obiekt['away'] is not None and
+                    obiekt['event_time']['hour'] != -1 and obiekt['event_time']['minute'] != -1):
+                obiekty.append(obiekt)
+                obiekt = deepcopy(initial_object)
+        elif data := re.match(r'(\d+)[-/.](\d+)[-/.](\d+)', line):
             obiekt['event_time'].update({
                 'day': int(data.group(1)),
                 'month': int(data.group(2)),
-                'year': int(data.group(3))
+                'year': int(data.group(3)),
+                'hour': obiekt['event_time']['hour'],
+                'minute': obiekt['event_time']['minute']
             })
-            state = 'godzina'
-        elif state =='godzina':
-            godzina = re.match(r"(\d+):(\d+)", line)
+        elif godzina := re.match(r"(\d+):(\d+)", line):
             obiekt['event_time'].update({
+                'day': obiekt['event_time']['day'],
+                'month': obiekt['event_time']['month'],
+                'year': obiekt['event_time']['year'],
                 'hour': int(godzina.group(1)),
                 'minute': int(godzina.group(2))
             })
-            state = 'gospodarz'
-        elif state == 'gospodarz':
-            obiekt['home'] = line
-            state='gosc'
-        elif state == 'gosc':
-            obiekt['away'] = line
-            state='nowy obiekt'
+        else:
+            if obiekt['home'] is None:
+                obiekt.update({'home': line})
+            else:
+                obiekt.update({'away': line})
+    if obiekt not in obiekty:
+        if (obiekt['home'] is not None and obiekt['away'] is not None and
+                obiekt['event_time']['hour'] != -1 and obiekt['event_time']['minute'] != -1):
+            obiekty.append(obiekt)
     return obiekty
 
 def parse_flash_format(content: str, date: dt):
