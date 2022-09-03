@@ -37,6 +37,7 @@ def parse_sofa_format(content: str):
                 'minute': int(godzina.group(2))
             })
         else:
+            if line.strip() == "-": continue  # line to ommit dash 
             if obiekt['home'] is None:
                 obiekt.update({'home': line})
             else:
