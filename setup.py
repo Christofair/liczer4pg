@@ -42,5 +42,4 @@ setup(
         'Werkzeug==2.1.2',
         'zipp==3.8.1'
     ],
-
 )
