@@ -5,8 +5,8 @@ import re
 from datetime import date, datetime
 from lxml import html
 from lxml.etree import tostring as et2str
-import utils
-import errors
+import liczer4pg.utils as utils
+import liczer4pg.errors as errors
 
 # imports for do database
 import sqlalchemy as sa

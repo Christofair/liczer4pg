@@ -5,7 +5,7 @@ import re
 from datetime import datetime
 import pytz
 
-import errors
+import liczer4pg.errors as errors
 
 def parse_post_if_string(post) -> html.HtmlElement:
     if isinstance(post, str):

@@ -1,14 +1,14 @@
 from flask import Flask, jsonify, request, g
 from flask_cors import CORS
-import dbmanager
-import models
-import utils
+import liczer4pg.dbmanager as dbmanager
+import liczer4pg.models as models
+import liczer4pg.utils as utils
 import sqlalchemy as sa
 from datetime import datetime
 import requests;
 import json
 
-import formatting_parsers as parsers
+import liczer4pg.formatting_parsers as parsers
 
 app = Flask('typerka_pg_api')
 CORS(app)
