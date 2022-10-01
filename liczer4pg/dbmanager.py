@@ -1,6 +1,6 @@
 """Manager who can create all models or drop whole database without droping db itself."""
 import sqlalchemy as sa
-import models
+import liczer4pg.models as models
 import sys, os
 from datetime import datetime
 

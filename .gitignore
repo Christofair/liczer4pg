@@ -13,3 +13,4 @@ Pipfile
 Pipfile.lock
 *.db
 *.txt
+runapp.sh
