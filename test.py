@@ -247,7 +247,7 @@ class TestFeature(unittest.TestCase):
         for i in range(3):
             self.assertEqual(typers[i].bet.count_point(events_to_compare), correct_results[i])
 
-        # ANTOHER TEST WITH DEVISED RESULTS.
+        # ANOTHER TEST WITH DEVISED RESULTS.
         topic_response = requests.get("https://pogrywamy.pl/topic/16860-typowanie-liga-narod%C3%B3w-3-21072022-%C4%87wier%C4%87fina%C5%82y/")
         self.assertFalse(topic_response.status_code != 200)
         posts = utils.collect_posts_from_topic(topic_response.content.decode('utf-8'))
@@ -305,7 +305,6 @@ class TestDB(unittest.TestCase):
         models.Base.metadata.schema="typerkapg"
         models.Base.metadata.create_all(cls.engine)
         # check if database created.
-        # The question is, how to check that DB exists?
         if not os.path.exists('./TestDB.db'):
             cls.fail(cls, "DB TEST FAIL")
         cls.SessionFactory = sa.orm.sessionmaker(cls.engine)
@@ -393,7 +392,8 @@ class TestFunWithDB(unittest.TestCase):
             os.remove('./TestDB.db')
 
     def test_get_info_from_few_topics(self):
-        """To test: uncomment last 2 lines and check DB manually."""
+        """To test: uncomment last 2 lines and check DB manually.
+        May be used to others queries"""
         links = [
             "https://pogrywamy.pl/topic/16862-typowanie-01-ekstraklasa-17072022/",
             "https://pogrywamy.pl/topic/16875-typowanie-02-ecl-19072022/",

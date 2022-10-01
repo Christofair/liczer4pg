@@ -30,9 +30,16 @@ def collect_posts_from_topic(topic_html_doc: str) -> list[html.Element]:
             raise
     posts: list[html.Element] = doc.xpath('//article')
     for post in posts:
-        # TODO: Add condition to searching "punktacja" string.
-        imgs = post.cssselect('.ipsColumn_fluid')[0].xpath('*//img')
+        imgs = post.cssselect('.cPost_contentWrap')[0].xpath('*//img')
         if any([re.search('.*wyniki.*png', img.get('alt')) for img in imgs]):
+            posts.remove(post)
+            break
+        if any([re.search('.*35a820dc36f8f7f5203f0c731661b385.*png', img.get('src')) for
+                img in imgs]):
+            posts.remove(post)
+            break
+        if any([re.search('.*typowanieinnykolor2.*d3509b73d73f36d87c4163016b44e81a.*png',
+                          img.get('src')) for img in imgs]):
             posts.remove(post)
             break
     return posts

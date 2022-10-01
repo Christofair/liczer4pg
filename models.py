@@ -35,6 +35,31 @@ class Event(Base):
     points = sa.Column(sa.Integer, default=0, nullable=False)
     sport = sa.Column(sa.String(128), nullable=False)
 
+    def as_dict(self):
+        """Return event object as basic type dict"""
+        return {
+            "start_time": self.start_time.timestamp(),
+            "home_team": self.home_team,
+            "away_team": self.away_team,
+            "home_score": self.home_score,
+            "away_score": self.away_score,
+            "winner": self.winner if self.winner is not None and self.winner != "" else None
+        }
+
+    @classmethod
+    def from_dict(cls, d):
+        hs = d.get('home_score')
+        _as = d.get('away_score')
+        ht = d.get('home_team')
+        at = d.get('away_team')
+        win = d.get('winner')
+        if ((hs is None or hs == "" ) and (_as is None or _as == "")) and (
+            win is None or win == ""):
+            raise ValueError("Can't create object from this dict")
+        if hs == "" or _as == "" or hs is None or _as is None:
+            raise ValueError("The names of team in event was empty or None")
+        return cls(home_score=hs, away_score=_as, home_team=ht, away_team=at, winner=win)
+
     def set_score(self, value):
         """Setting score for event. If there is winner type of bet, then
         value 1 for home_team or away_team specifies that winner."""
@@ -43,8 +68,8 @@ class Event(Base):
             self.away_score = 0
             self.winner = None
         elif '-' in value:
-            self.home_score = value.split('-')[0]
-            self.away_score = value.split('-')[1]
+            self.home_score = int(value.split('-')[0])
+            self.away_score = int(value.split('-')[1])
             if self.home_score > self.away_score:
                 self.winner = self.home_team
             elif self.home_score < self.away_score:
@@ -74,7 +99,7 @@ class Event(Base):
         stra = []
         if self.start_time:
             stra.append(f"\nStart at {self.start_time.ctime()}\n")
-        if self.winner is not None and self.result == "0-0":
+        if self.winner is not None and self.winner != "":
             stra.append(f"{self.home_team}\tVS\t{self.away_team}")
             stra.append(f"\n[WINNER]\t{self.winner}")
         else:
@@ -144,10 +169,11 @@ class EventParser:
         """Load event from line"""
         # Find event matching in this line, and operate on deepcopy of events from patterns
         single_valid_event = [event for event in deepcopy(self.pattern)
-                              if event.home_team in line and event.away_team in line][0]
+                            if event.home_team in line and event.away_team in line]
         # Check if that line was valid as event
         if not single_valid_event:
             raise errors.NotEventLine("That line %s can't be parsed as event line" % (line,))
+        single_valid_event = single_valid_event[0]
         # Group results ints
         home, away = single_valid_event.home_team, single_valid_event.away_team
         pattern = rf'{home}.*(\d+).*-.*(\d+).*{away}'
@@ -168,7 +194,7 @@ class EventParser:
         processed_line = line[:start_of_braces]
         thetime_line = line[start_of_braces:]
         start_time = utils.get_timestamp_from_typujemy_line(thetime_line, year)
-        home, away = processed_line.split('-')
+        home, away = processed_line.split(' - ')
         home = home.replace('\xa0',' ').strip()
         away = away.replace('\xa0',' ').strip()
         return Event(
@@ -190,7 +216,8 @@ class EventParser:
             lines = list(
                 filter(None, post.cssselect('.cPost_contentWrap')[0].text_content().splitlines()))
             flist = [c.search(l) for l in lines if c.search(l) is not None]
-            if flist and 'typer' in utils.get_post_owner(post, True)[1]:
+            rangs = utils.get_post_owner(post, True)[1]
+            if flist and ('typer' in rangs or 'zasłużony' in rangs):
                 for i in range(lines.index(flist[0].string), len(lines)):
                     try:
                         pattern_events.append(EventParser._parse_pattern_event(lines[i], post_year))
@@ -201,7 +228,7 @@ class EventParser:
                         # then the event won't be counted
                     except Exception as e:
                         logger.exception(e)
-                    if re.search(r"[Mm]oje [tT]ypy[:]", lines[i]) or lines[i] == '\xa0':
+                    if re.search(r"[Mm]oje [tT]ypy[:]", lines[i]):
                         break
                 break  # only one post has `c` pattern in it.
         return pattern_events
@@ -214,6 +241,7 @@ class Bet(Base):
     typer_id = sa.Column(sa.Integer, sa.ForeignKey('typers.id'))
     typer = orm.relationship('Typer', back_populates='bets')
     topic_link = sa.Column(sa.String(255), sa.ForeignKey('topics.link'))
+    topic = orm.relationship('Topic', back_populates='bets')
 
     def __init__(self):
         self.events = []
@@ -263,7 +291,15 @@ class Bet(Base):
         parser = EventParser(ref_date=post_date, ref_events=pattern_events)
         comment_content = post_root.cssselect('.cPost_contentWrap')[0]
         lines = comment_content.text_content().splitlines()
-        pattern = r'.+.*\d.*-.*\d.*(?:\(typujemy.*){0,1}'
+        rangs = utils.get_post_owner(post, True)[1]
+        if "typer" in rangs or "zasłużony" in rangs:
+            try:
+                line = [l for l in lines if re.search(r'[Mm]oje [Tt]ypy[:]', l)][0]
+                lines = lines[lines.index(line):]
+            except Exception as e:
+                print("Topic author doesn't include own bet")
+                print(e)
+        pattern = r'.+\d.*-.*\d.+(?:\(typujemy.*){0,1}'
         c = re.compile(pattern)
         lines = filter(c.search, lines)
         lines = [l.replace('\xa0',' ') for l in lines]
@@ -286,6 +322,7 @@ class Bet(Base):
         # checking equality has to be in first list comprehension, because undefined of variable
         if kind == 'scores':
             counting_function = lambda x, y: x.count_point_scores(y)
+        # TODO: try change winner to winners
         elif kind == 'winner':
             counting_function = lambda x, y: x.count_point_winner(y)
         else:
@@ -296,7 +333,7 @@ class Bet(Base):
             raise ValueError("good event list was empty")
         return sum([[counting_function(event, good_event)
                     for good_event in good_events_list
-                        if event.home_team == good_event.home_team][0]
+                        if event == good_event][0]
                     for event in self.events])
 
 
@@ -381,7 +418,10 @@ class Topic(Base):
     last_event_end = sa.Column(sa.DateTime)
     sport = sa.Column(sa.String(128))
     # tournament = sa.Column(sa.String(128), nullable=False)
-    bets = orm.relationship('Bet')
+    bets = orm.relationship('Bet', back_populates='topic')
+
+    def __repr__(self):
+        return "[%s]|%s|%s" % ("OPEN" if self.is_open else "CLOSE", self.link, self.sport)
 
     def __init__(self, link, name=""):
         self.is_open = True
