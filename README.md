@@ -17,6 +17,11 @@ To install this flask app, you should clone repo and simple run following comman
 ```sh
 pip install path/to/repo
 ```
+Another method to install, when you don't have `pip` command - tested on my oracle virtual machine.
+I get error so that is why write sudo before it.
+```sh
+[sudo] python3 setup.py install
+```
 
 # Run
 The entry point of this is goFlask.py. You shold watch that file to know about entrypoints.
