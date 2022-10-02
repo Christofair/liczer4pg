@@ -14,10 +14,14 @@ easy to count all points.
 
 # Installation
 To install this flask app, you should clone repo and simple run following command.
-> pip install path/to/repo
+```sh
+pip install path/to/repo
+```
 
 # Run
 The entry point of this is goFlask.py. You shold watch that file to know about entrypoints.
-Set python environment where you have just installed liczer4pg and run following commands.
-> export FLASK\_APP=goFlask.py
-> flask run
+Set python environment where you have just installed liczer4pg and run following commands
+```sh
+export FLASK\_APP=goFlask.py
+flask run
+```
