@@ -11,3 +11,13 @@ I want that betting at forum to be fun. Cause there is no money for it, only som
 to write topic of leagues people like, watch matches from it, and they will intuitively bet results
 for them. Therefore I want have possibility to write more topics without waste of time and then
 easy to count all points.
+
+# Installation
+To install this flask app, you should clone repo and simple run following command.
+> pip install path/to/repo
+
+# Run
+The entry point of this is goFlask.py. You shold watch that file to know about entrypoints.
+Set python environment where you have just installed liczer4pg and run following commands.
+> export FLASK\_APP=goFlask.py
+> flask run
