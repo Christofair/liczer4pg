@@ -22,6 +22,6 @@ pip install path/to/repo
 The entry point of this is goFlask.py. You shold watch that file to know about entrypoints.
 Set python environment where you have just installed liczer4pg and run following commands
 ```sh
-export FLASK\_APP=goFlask.py
+export FLASK_APP=goFlask.py
 flask run
 ```
