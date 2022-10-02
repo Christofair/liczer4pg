@@ -2,9 +2,12 @@ from setuptools import setup
 
 setup(
     name='liczer4pg',
+    description='Point counter at forum PG',
+    author='Krzysztof (krystofair) Kłapyta',
+    author_email='krystofer02@gmail.com',
     version='1.0.0',
     packages=['liczer4pg'],
-    install_requirements=[
+    install_requires=[
         'alembic==1.8.1',
         'atomicwrites==1.4.1',
         'attrs==21.4.0',
