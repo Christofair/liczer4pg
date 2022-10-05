@@ -8,8 +8,8 @@ to database, there are models prepared for that, but those are not used yet.
 
 # Why I created this. - Motivation
 I want that betting at forum to be fun. Cause there is no money for it, only some awards. So I try 
-to write topic of leagues people like, watch matches from it, and they will intuitively bet results
-for them. Therefore I want have possibility to write more topics without waste of time and then
+to write topic of leagues people like or/and watch matches from it, and they will intuitively bet results
+for them. Therefore I want to have possibility writing more topics without waste of time and then
 easy to count all points.
 
 # Installation
