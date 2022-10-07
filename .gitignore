@@ -16,3 +16,4 @@ Pipfile.lock
 runapp.sh
 build/
 liczer4pg.egg-info/
+nginx.conf
