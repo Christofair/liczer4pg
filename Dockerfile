@@ -9,5 +9,4 @@ RUN    apt-get update \
     && cd /usr/src/liczer4pg && python3 setup.py install
 
 WORKDIR /
-CMD ["sleep", "360d"]
-# ENTRYPOINT gunicorn -w $WORKERS_NUMBER 'liczer4pg.goFlask:app' -p 5000
+ENTRYPOINT python3 -m gunicorn -w $WORKERS_NUMBER -b 127.0.0.1:5000 liczer4pg.goFlask:app
