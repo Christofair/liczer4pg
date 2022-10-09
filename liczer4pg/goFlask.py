@@ -11,7 +11,7 @@ import json
 import liczer4pg.formatting_parsers as parsers
 
 app = Flask('typerka_pg_api')
-CORS(app)
+CORS(app, resources={r"*": {'origins':'*'}})
 
 def get_posts_cache():
     if 'posts_cache' not in g:
