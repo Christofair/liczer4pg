@@ -39,3 +39,6 @@ This version can be used as standalone istance, I think.
 docker image build . -t liczerapi
 docker run -d -p 8000:80 liczerapi
 ```
+## Dockerfile2
+This file is special when we have ingress on cluster, so I think there is no need of additional nginx proxy.
+I want to try do it, that is why I prepare it in that way.
