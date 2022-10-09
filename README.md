@@ -30,3 +30,8 @@ Set python environment where you have just installed liczer4pg and run following
 export FLASK_APP=goFlask.py
 flask run
 ```
+
+# Run with Docker
+Search a Dockerfile, and build an image from it.
+That build whole application with NGINX as a proxy.
+This version can be used as standalone istance, I think.
