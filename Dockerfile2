@@ -1,0 +1,17 @@
+FROM alpine:latest
+ENV WORKERS_NUMBER=4
+RUN apk update && apk upgrade && apk add curl && apk add python3 && apk add git
+RUN    mkdir -p /usr/src/pip && cd /usr/src/pip \
+    && curl -sSL https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
+    && python3 ./get-pip.py \
+    && git clone https://github.com/krystofair/liczer4pg /usr/src/liczer4pg \
+    && git clone https://github.com/benoitc/gunicorn /usr/src/gunicorn \
+    && pip install /usr/src/liczer4pg \
+    && pip install /usr/src/gunicorn
+
+WORKDIR /
+EXPOSE 5000/tcp
+# This 0.0.0.0 ip is wrong in some way cause when there will be proxy - it can be omitted.
+# But for now I'm doing this for test.
+ENTRYPOINT gunicorn -w $WORKERS_NUMBER -b 0.0.0.0:5000 liczer4pg.goFlask:app
+# ENTRYPOINT gunicorn -w $WORKERS_NUMBER -b 127.0.0.1:5000 liczer4pg.goFlask:app
