@@ -31,7 +31,7 @@ export FLASK_APP=goFlask.py
 flask run
 ```
 
-# Run with Docker
+## Dockerfile
 Search a Dockerfile, and build an image from it.
 That build whole application with NGINX as a proxy.
 This version can be used as standalone istance, I think.
