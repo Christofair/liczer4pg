@@ -35,3 +35,7 @@ flask run
 Search a Dockerfile, and build an image from it.
 That build whole application with NGINX as a proxy.
 This version can be used as standalone istance, I think.
+```sh
+docker image build . -t liczerapi
+docker run -d -p 8000:80 liczerapi
+```
