@@ -13,6 +13,5 @@ Pipfile
 Pipfile.lock
 *.db
 *.txt
-runapp.sh
 build/
 liczer4pg.egg-info/
