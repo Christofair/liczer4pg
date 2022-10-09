@@ -42,3 +42,8 @@ docker run -d -p 8000:80 liczerapi
 ## Dockerfile2
 This file is special when we have ingress on cluster, so I think there is no need of additional nginx proxy.
 I want to try do it, that is why I prepare it in that way.
+If you want create and run that second image you should do following steps.
+```sh
+docker image build -f Dockerfile2 -t liczerapi-alpine
+docker run -d -p 8080:5000 liczerapi-alpine
+```
