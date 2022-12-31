@@ -188,7 +188,9 @@ class EventParser:
     def _parse_pattern_event(line, year):
         """Load pattern event from line"""
         try:
-            start_of_braces = line.index('(')
+            start_of_braces = line.index('typujemy')
+            if line[start_of_braces-1] == '(':
+                start_of_braces -= 1
         except ValueError:
             raise errors.NotTimeLine from None
         processed_line = line[:start_of_braces]
