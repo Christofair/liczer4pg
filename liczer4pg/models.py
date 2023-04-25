@@ -186,7 +186,7 @@ class EventParser:
 
     @staticmethod
     def _parse_pattern_event(line, year):
-        """Load pattern event from line"""
+        """Load single event from line of pattern."""
         try:
             start_of_braces = line.index('typujemy')
             if line[start_of_braces-1] == '(':
@@ -210,7 +210,7 @@ class EventParser:
 
     @staticmethod
     def get_pattern_events(posts: list[html.Element]) -> list["Event"]:
-        """Return post in which is pattern for all bets."""
+        """Return list of events knowns as pattern"""
         pattern_events = []
         for post in posts:
             post_year = utils.get_post_timestamp(post).year
