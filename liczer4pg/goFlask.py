@@ -8,11 +8,13 @@ import sqlalchemy as sa
 from datetime import datetime
 import requests;
 import json
+import logging
 
 import liczer4pg.formatting_parsers as parsers
 
 app = Flask('typerka_pg_api')
 CORS(app, resources={r"*": {'origins':'*'}})
+logger = logging.getLogger(__name__)
 
 
 # TODO - Methods without @app.get etc. routing should be moved to another location.
@@ -47,7 +49,7 @@ def get_db():
 @app.get('/')
 def index():
     result = get_db().get_bets_typer_by_month(datetime(2022, 7, 1)).all()
-    print(result)
+    logger.info(result)
     return jsonify(result)
 
 
@@ -100,8 +102,8 @@ def counting_points():
         # get good events to checking with
         good_events = [models.Event.from_dict(event_d) for event_d in data['events']]
     except KeyError as e:
-        print(e)
-        raise e;
+        logger.exception(e)
+        raise e
     winner_type = good_events[0].winner is not None and good_events[0].winner != ""
     kind = 'scores' if not winner_type else 'winner'
     posts = get_posts(link)
@@ -109,10 +111,11 @@ def counting_points():
     for post in posts:
         try:
             typer = models.Typer(utils.get_post_owner(post), post)
-            typer.load_bet(good_events, winner_type)
-            typers.append(typer)
+            if typer not in typers:
+                typer.load_bet(good_events, winner_type)
+                typers.append(typer)
         except Exception as e:
-            print(e)
+            logger.exception(e)
     results_data = []
     for i in range(len(typers)):
         results_data.append({
@@ -130,11 +133,11 @@ def rendered_pattern():
         format = data['format']
         dt = data.get('date')
     except KeyError as e:
-        print(e)
+        logger.exception(e)
         raise e;
     # type {home, away, event_time: datetime}
     objects = []
-    if format.lower() == 'sofascore':
+    if format.lower() == 'sofascore' or format.lower() == 'standard':
         objects = parsers.parse_sofa_format(matches)
     elif format.lower() == 'flashscore':
         # XXX THIS CAN RAISE AN EXCEPTION. - when dt will be None.

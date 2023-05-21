@@ -185,6 +185,12 @@ class EventParser:
         return single_valid_event
 
     @staticmethod
+    def _known_bad_line(line):
+        if not line.strip():  # emtpy line
+            return True
+        return False
+
+    @staticmethod
     def _parse_pattern_event(line, year):
         """Load single event from line of pattern."""
         try:
@@ -192,7 +198,7 @@ class EventParser:
             if line[start_of_braces-1] == '(':
                 start_of_braces -= 1
         except ValueError:
-            raise errors.NotTimeLine from None
+            raise errors.NotTimeLine(line) from None
         processed_line = line[:start_of_braces]
         thetime_line = line[start_of_braces:]
         start_time = utils.get_timestamp_from_typujemy_line(thetime_line, year)
@@ -220,9 +226,13 @@ class EventParser:
             flist = [c.search(l) for l in lines if c.search(l) is not None]
             rangs = utils.get_post_owner(post, True)[1]
             if flist and ('typer' in rangs or 'zasłużony' in rangs):
-                for i in range(lines.index(flist[0].string), len(lines)):
+                for i in range(lines.index(flist[0].string) + 1, len(lines)):
+                    if re.search(r"[Mm]oje [tT]ypy[:]", lines[i]):
+                        break
                     try:
-                        pattern_events.append(EventParser._parse_pattern_event(lines[i], post_year))
+                        if not EventParser._known_bad_line(lines[i]):
+                            pattern_events.append(EventParser._parse_pattern_event(lines[i],
+                                                                                   post_year))
                     except errors.NotTimeLine:
                         # Never silently pass an exception.
                         logger.exception("Cannot find time line in pattern??")
@@ -230,8 +240,6 @@ class EventParser:
                         # then the event won't be counted
                     except Exception as e:
                         logger.exception(e)
-                    if re.search(r"[Mm]oje [tT]ypy[:]", lines[i]):
-                        break
                 break  # only one post has `c` pattern in it.
         return pattern_events
 
@@ -299,8 +307,8 @@ class Bet(Base):
                 line = [l for l in lines if re.search(r'[Mm]oje [Tt]ypy[:]', l)][0]
                 lines = lines[lines.index(line):]
             except Exception as e:
-                print("Topic author doesn't include own bet")
-                print(e)
+                logger.info("Topic author doesn't include own bet")
+                logger.exception(e)
         pattern = r'.+\d.*-.*\d.+(?:\(typujemy.*){0,1}'
         c = re.compile(pattern)
         lines = filter(c.search, lines)
