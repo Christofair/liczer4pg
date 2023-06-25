@@ -99,3 +99,7 @@ def normalize_name(word: str):
     for k, v in letter_map.items():
         w = w.replace(k, v)
     return w
+
+def get_author_of_topic(all_posts) -> str:
+    """Taking author of first post, because author of that post is author of topic too"""
+    return get_post_owner(all_posts[0], False)

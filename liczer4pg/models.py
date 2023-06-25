@@ -13,6 +13,7 @@ import sqlalchemy as sa
 import sqlalchemy.orm as orm
 import logging
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 Base = orm.declarative_base()
@@ -176,7 +177,7 @@ class EventParser:
         single_valid_event = single_valid_event[0]
         # Group results ints
         home, away = single_valid_event.home_team, single_valid_event.away_team
-        pattern = rf'{home}.*(\d+).*-.*(\d+).*{away}'
+        pattern = rf'{home}.*?(\d+).*?-.*?(\d+).*?{away}'
         # Search pattern in line
         matching = re.search(pattern, line)
         # Enter the result to that event
@@ -218,14 +219,15 @@ class EventParser:
     def get_pattern_events(posts: list[html.Element]) -> list["Event"]:
         """Return list of events knowns as pattern"""
         pattern_events = []
+        topic_author = utils.get_author_of_topic(posts)
         for post in posts:
             post_year = utils.get_post_timestamp(post).year
             c = re.compile(r'^[Ww]z[oó]r[:]$')
             lines = list(
                 filter(None, post.cssselect('.cPost_contentWrap')[0].text_content().splitlines()))
             flist = [c.search(l) for l in lines if c.search(l) is not None]
-            rangs = utils.get_post_owner(post, True)[1]
-            if flist and ('typer' in rangs or 'zasłużony' in rangs):
+            post_author, rangs = utils.get_post_owner(post, True)
+            if topic_author == post_author and flist and ('typer' in rangs or 'zasłużony' in rangs):
                 for i in range(lines.index(flist[0].string) + 1, len(lines)):
                     if re.search(r"[Mm]oje [tT]ypy[:]", lines[i]):
                         break
@@ -301,15 +303,7 @@ class Bet(Base):
         parser = EventParser(ref_date=post_date, ref_events=pattern_events)
         comment_content = post_root.cssselect('.cPost_contentWrap')[0]
         lines = comment_content.text_content().splitlines()
-        rangs = utils.get_post_owner(post, True)[1]
-        if "typer" in rangs or "zasłużony" in rangs:
-            try:
-                line = [l for l in lines if re.search(r'[Mm]oje [Tt]ypy[:]', l)][0]
-                lines = lines[lines.index(line):]
-            except Exception as e:
-                logger.info("Topic author doesn't include own bet")
-                logger.exception(e)
-        pattern = r'.+\d.*-.*\d.+(?:\(typujemy.*){0,1}'
+        pattern = r'\d+.*?-.*?\d+.*?(?:\(typujemy.*){0,1}'
         c = re.compile(pattern)
         lines = filter(c.search, lines)
         lines = [l.replace('\xa0',' ') for l in lines]

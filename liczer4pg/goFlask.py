@@ -134,7 +134,7 @@ def rendered_pattern():
         dt = data.get('date')
     except KeyError as e:
         logger.exception(e)
-        raise e;
+        raise e
     # type {home, away, event_time: datetime}
     objects = []
     if format.lower() == 'sofascore' or format.lower() == 'standard':
