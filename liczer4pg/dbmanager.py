@@ -5,30 +5,30 @@ import sys, os
 from datetime import datetime
 
 
-if __name__ == '__main__':
-    login, password = ('','')
-    try:
-        with open('.mylogin.cnf') as dbkey:
-            _, login, password = dbkey.read().splitlines()
-            login = login.split('=')[1]
-            password = password.split('=')[1]
-    except OSError:
-        print("Opening DBKEY file failed.")
-        print('Ending.')
-        exit(-1)
-    if len(sys.argv) <= 1:
-        print("usage: python dbmanager.py (create|drop|export)")
-        exit(0)
-    engine = sa.create_engine(
-                    f"mysql+pymysql://{login}:{password}@localhost/TyperkaPG")
-    if sys.argv[1] == "create":
-        models.Base.metadata.create_all(engine)
-    elif sys.argv[1] == "drop":
-        response = input('Are you sure?> ')
-        if ('y' in response or 'Y' in response) and len(response) == 1:
-            models.Base.metadata.drop_all(engine)
-    else:
-        print("Command not found.")
+# if __name__ == '__main__':
+#     login, password = ('','')
+#     try:
+#         with open('.mylogin.cnf') as dbkey:
+#             _, login, password = dbkey.read().splitlines()
+#             login = login.split('=')[1]
+#             password = password.split('=')[1]
+#     except OSError:
+#         print("Opening DBKEY file failed.")
+#         print('Ending.')
+#         exit(-1)
+#     if len(sys.argv) <= 1:
+#         print("usage: python dbmanager.py (create|drop|export)")
+#         exit(0)
+#     engine = sa.create_engine(
+#                     f"mysql+pymysql://{login}:{password}@localhost/TyperkaPG")
+#     if sys.argv[1] == "create":
+#         models.Base.metadata.create_all(engine)
+#     elif sys.argv[1] == "drop":
+#         response = input('Are you sure?> ')
+#         if ('y' in response or 'Y' in response) and len(response) == 1:
+#             models.Base.metadata.drop_all(engine)
+#     else:
+#         print("Command not found.")
     # elif sys.argv[1] == "export":
     #     if len(sys.argv) <= 2:
     #         filename = input('Enter filename: ')
@@ -80,15 +80,14 @@ class DBManager:
         return result
 
     def get_typer_id_by_name(self, typername):
-        stmt = sa.select(model.Typer.id).where(model.Typer.name == typername)
+        stmt = sa.select(models.Typer.id).where(models.Typer.name == typername)
         with self.session() as session:
             result = session.execute(stmt)
         return result.id
 
     def get_bets_typers_with_topicname(self):
         """Get bets with typername and topicname"""
-        stmt = sa.select(models.Bet).join(models.Topic.name, models.Topic.sport,
-                                       models.Typer.name)
+        stmt = sa.select(models.Bet).join(models.Topic.name, models.Topic.sport, models.Typer.name)
         with self.session() as session:
             result = session.execute(stmt)
         return result
